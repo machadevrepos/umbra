@@ -9,6 +9,7 @@ import '../../core/models/session_record.dart';
 import '../../core/state/band_controller.dart';
 import '../../core/state/session_controller.dart';
 import '../../core/state/session_store.dart';
+import '../../core/utils/band_status_presentation.dart';
 import '../../core/utils/date_format.dart';
 import '../../core/utils/navigation.dart';
 import '../../core/widgets/app_button.dart';
@@ -100,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
               AppTheme.spaceXxxl,
             ),
             children: [
-              _TopBar(connected: band.connected, battery: band.battery),
+              _TopBar(state: band.state, battery: band.battery, hasReading: band.lastSeenAt != null),
               const SizedBox(height: AppTheme.spaceXxl),
               Text(_greeting, style: AppTypography.titleL()),
               const SizedBox(height: 4),
@@ -143,9 +144,11 @@ class _HomeScreenState extends State<HomeScreen> {
               _SectionLabel('Your band'),
               const SizedBox(height: AppTheme.spaceM),
               _BandStatusCard(
-                connected: band.connected,
+                state: band.state,
                 battery: band.battery,
                 restingHr: band.restingHr,
+                lastSeenAt: band.lastSeenAt,
+                stale: band.readingsAreStale,
                 onTap: () => pushOnce(context, (_) => const BandDetailScreen()),
               ),
               const SizedBox(height: AppTheme.spaceXxxl),
@@ -167,13 +170,15 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.connected, required this.battery});
+  const _TopBar({required this.state, required this.battery, required this.hasReading});
 
-  final bool connected;
+  final BandLinkState state;
   final int battery;
+  final bool hasReading;
 
   @override
   Widget build(BuildContext context) {
+    final status = BandStatusPresentation.of(state);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -187,39 +192,34 @@ class _TopBar extends StatelessWidget {
         Row(
           children: [
             Semantics(
-              label: connected ? 'Band connected' : 'Band offline',
+              label: 'Band ${status.label}',
               child: Row(
                 children: [
-                  Icon(
-                    connected ? AppIcons.bluetooth : AppIcons.bluetoothOff,
-                    size: AppTheme.iconS,
-                    color: connected ? AppColors.success : AppColors.textMuted,
-                  ),
+                  Icon(status.icon, size: AppTheme.iconS, color: status.color),
                   const SizedBox(width: AppTheme.spaceXs),
-                  Text(
-                    connected ? 'Connected' : 'Offline',
-                    style: AppTypography.labelM(),
-                  ),
+                  Text(status.label, style: AppTypography.labelM()),
                 ],
               ),
             ),
-            const SizedBox(width: AppTheme.spaceL),
-            Semantics(
-              label: 'Battery $battery percent',
-              child: Row(
-                children: [
-                  Icon(
-                    battery <= 25 ? AppIcons.batteryLow : AppIcons.batteryFull,
-                    size: AppTheme.iconS,
-                    color: battery <= 25
-                        ? AppColors.error
-                        : AppColors.textMuted,
-                  ),
-                  const SizedBox(width: AppTheme.spaceXs),
-                  Text('$battery%', style: AppTypography.labelM()),
-                ],
+            if (hasReading) ...[
+              const SizedBox(width: AppTheme.spaceL),
+              Semantics(
+                label: 'Battery $battery percent',
+                child: Row(
+                  children: [
+                    Icon(
+                      battery <= 25 ? AppIcons.batteryLow : AppIcons.batteryFull,
+                      size: AppTheme.iconS,
+                      color: battery <= 25
+                          ? AppColors.error
+                          : AppColors.textMuted,
+                    ),
+                    const SizedBox(width: AppTheme.spaceXs),
+                    Text('$battery%', style: AppTypography.labelM()),
+                  ],
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ],
@@ -377,19 +377,26 @@ class _SectionLabel extends StatelessWidget {
 
 class _BandStatusCard extends StatelessWidget {
   const _BandStatusCard({
-    required this.connected,
+    required this.state,
     required this.battery,
     required this.restingHr,
+    required this.lastSeenAt,
+    required this.stale,
     required this.onTap,
   });
 
-  final bool connected;
+  final BandLinkState state;
   final int battery;
   final int restingHr;
+  final DateTime? lastSeenAt;
+  final bool stale;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final hasReading = lastSeenAt != null;
+    final valueColor = stale ? AppColors.textMuted : AppColors.textPrimary;
+
     return PressableScale(
       onTap: onTap,
       semanticLabel: 'Band details',
@@ -399,41 +406,67 @@ class _BandStatusCard extends StatelessWidget {
           color: AppColors.bgSurface,
           borderRadius: BorderRadius.circular(AppTheme.radiusM),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: AppColors.bgHairline,
-                shape: BoxShape.circle,
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AppColors.bgHairline,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    AppIcons.heart,
+                    size: AppTheme.iconM,
+                    color: AppColors.gold,
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spaceL),
+                LabeledStat(
+                  label: 'Resting HR',
+                  value: hasReading ? '$restingHr bpm' : 'No data',
+                  valueStyle: AppTypography.titleM(color: valueColor),
+                ),
+                const Spacer(),
+                LabeledStat(
+                  label: 'Battery',
+                  value: hasReading ? '$battery%' : 'No data',
+                  alignEnd: true,
+                  valueStyle: AppTypography.titleM(color: valueColor),
+                ),
+                const SizedBox(width: AppTheme.spaceM),
+                const Icon(
+                  AppIcons.chevronForward,
+                  size: AppTheme.iconS,
+                  color: AppColors.textMuted,
+                ),
+              ],
+            ),
+            if (stale && lastSeenAt != null) ...[
+              const SizedBox(height: AppTheme.spaceM),
+              const Divider(height: 1, color: AppColors.bgHairline),
+              const SizedBox(height: AppTheme.spaceM),
+              Row(
+                children: [
+                  Icon(
+                    state == BandLinkState.reconnecting ? AppIcons.bluetooth : AppIcons.bluetoothOff,
+                    size: AppTheme.iconS,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(width: AppTheme.spaceXs),
+                  Text(
+                    state == BandLinkState.reconnecting
+                        ? 'Reconnecting, last seen ${relativeTimeAgoLabel(lastSeenAt!)}'
+                        : 'Last seen ${relativeTimeAgoLabel(lastSeenAt!)}',
+                    style: AppTypography.bodyS(),
+                  ),
+                ],
               ),
-              child: const Icon(
-                AppIcons.heart,
-                size: AppTheme.iconM,
-                color: AppColors.gold,
-              ),
-            ),
-            const SizedBox(width: AppTheme.spaceL),
-            LabeledStat(
-              label: 'Resting HR',
-              value: '$restingHr bpm',
-              valueStyle: AppTypography.titleM(),
-            ),
-            const Spacer(),
-            LabeledStat(
-              label: 'Battery',
-              value: '$battery%',
-              alignEnd: true,
-              valueStyle: AppTypography.titleM(),
-            ),
-            const SizedBox(width: AppTheme.spaceM),
-            const Icon(
-              AppIcons.chevronForward,
-              size: AppTheme.iconS,
-              color: AppColors.textMuted,
-            ),
+            ],
           ],
         ),
       ),

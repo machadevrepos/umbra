@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- google_fonts fetches Fraunces/Inter over the network at first run and
          caches them locally. debug/profile manifests already grant INTERNET
          (for the Flutter tool's own dev connection), but that's merged out
@@ -6,6 +7,22 @@
          real release build silently loses the whole type system to a
          system-font fallback with no error surfaced anywhere. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Band pairing over BLE. Pre-Android 12 uses the legacy BLUETOOTH/
+         BLUETOOTH_ADMIN pair plus a runtime location permission (the OS
+         historically treated BLE scan results as location-capable); Android
+         12+ replaces that with BLUETOOTH_SCAN/BLUETOOTH_CONNECT.
+         `neverForLocation` on the scan permission tells the OS we only
+         filter by device name/service UUID and never derive physical
+         location from scan results, which lets the app skip requesting
+         location permission at all on API 31+. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
     <application
         android:label="umbra"
         android:name="${applicationName}"

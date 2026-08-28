@@ -13,6 +13,17 @@ String relativeDayLabel(DateTime dt) {
   return '${months[dt.month - 1]} ${dt.day}';
 }
 
+/// "Just now" / "5m ago" / "3h ago" / falls back to [relativeDayLabel] past
+/// a day, for a cached reading's staleness (e.g. the band's last known
+/// battery level after the link drops).
+String relativeTimeAgoLabel(DateTime dt) {
+  final diff = DateTime.now().difference(dt);
+  if (diff.inMinutes < 1) return 'Just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+  if (diff.inHours < 24) return '${diff.inHours}h ago';
+  return relativeDayLabel(dt);
+}
+
 /// 12-hour "h:mm a" formatting, same rationale as [relativeDayLabel].
 String shortTimeLabel(DateTime dt) {
   final hour24 = dt.hour;

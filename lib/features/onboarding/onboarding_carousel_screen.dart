@@ -17,7 +17,7 @@ class _OnboardingPageData {
 const List<_OnboardingPageData> _kPages = [
   _OnboardingPageData(
     mood: OnboardingMood.calm,
-    headline: 'Umbra reminds you to drink.',
+    headline: 'Umbra reminds you to drink water.',
     body: 'The band buzzes. You drink water. That\'s it. No logging, no tapping, no setup.',
   ),
   _OnboardingPageData(

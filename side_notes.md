@@ -114,10 +114,10 @@ constitution already fits the brief.
   a documented Swift BLE manager class. This repository is a **Flutter**
   project. If that's a deliberate change of direction (e.g. cross-platform
   now matters more than matching the brief literally), fine, but don't
-  silently assume it's resolved. Worth confirming with the user before deep
-  BLE work, since the BLE integration approach (flutter_blue_plus vs.
-  CoreBluetooth directly) and the "Apple Watch companion" deliverable both
-  hinge on this.
+  silently assume it's resolved. The BLE integration approach is decided
+  for the Flutter side now (see "BLE integration, decided" below), but the
+  "Apple Watch companion" deliverable specifically still hinges on this,
+  a Watch app is native-only regardless of what the phone app is built in.
 - **Dubai/bilingual scope vs. the brief:** `CLAUDE.md` frames Umbra as a
   Dubai launch with mandatory Arabic/English bilingual support from day one.
   Brad's brief never mentions localization and describes delivery to New
@@ -132,6 +132,81 @@ constitution already fits the brief.
 - No data model, state management choice, or folder structure is decided
   yet, `CLAUDE.md` says to document that decision here once made. Nothing
   to record yet; `lib/` is still the default `flutter create` scaffold.
+
+## BLE integration, decided
+
+`flutter_reactive_ble` (BSD, free for commercial use), not
+`flutter_blue_plus`: the latter changed its license to require a paid
+commercial tier for any for-profit use, including development and
+testing, which applies to Umbra. See `lib/core/state/band_controller.dart`
+and `lib/core/ble/`.
+
+- `BandController` owns the real link end to end: scan, connect,
+  reconnect-with-backoff on an unexpected drop, and persisting the last
+  paired device (`shared_preferences`, via `band_storage.dart`) so the app
+  reconnects on its own the next time it's opened, without the user
+  re-pairing.
+- No real firmware exists yet, so `band_ble_constants.dart` defaults to
+  the Nordic UART Service UUIDs (the standard choice for an ESP32
+  prototype streaming JSON text over BLE notify) and scans by advertised
+  name prefix rather than service UUID. Both are isolated to that one
+  file, swapping in the real firmware's UUIDs later is a one-file change.
+- Telemetry is parsed against the feasibility report's example JSON shape
+  (`device_id`, `heart_rate`, `spo2`, `battery`, `session_active`), with
+  `gsr` never read, per the v1 scope decision above.
+- Every BLE/permission entry point is wrapped so a platform error changes
+  state instead of throwing: Bluetooth off, permission denied, the band
+  itself powering off mid-session, or no BLE plugin available at all (as
+  in a widget test) all become a visible app state, never a crash. This
+  matches the standalone-band requirement above: losing the link can't
+  take the app down or block the band's own reminders.
+
+### Device status, available app-wide
+
+`BandController` is registered once, at the `MultiProvider` root in
+`main.dart`, the same tier as `SessionController`/`SessionStore`/
+`SettingsController`. Any screen or future controller reads it the same
+way, `context.watch<BandController>()` to rebuild on change or
+`context.read<BandController>()` for a one-off action, no per-screen
+wiring needed. This is the one source of truth for hardware/connection
+state, nothing else in the app should track a second copy of it.
+
+Public contract other features can rely on:
+
+- `state` (`BandLinkState`): `idle` (never paired, or user forgot the
+  band) · `bluetoothUnavailable` · `permissionDenied` · `scanning` ·
+  `connecting` · `connected` · `reconnecting` (was connected, dropped,
+  retrying with backoff, the band itself keeps buzzing regardless).
+- `connected` (bool): shorthand for `state == BandLinkState.connected`.
+- `battery`, `restingHr` (int): most recent readings. Hold their last
+  known value after a disconnect, they don't reset to 0, check
+  `lastSeenAt`/`readingsAreStale` before treating them as current.
+- `deviceName` (String): the paired band's advertised name, falls back to
+  a generic "Umbra band" label.
+- `lastSeenAt` (DateTime?): when a reading last actually arrived, `null`
+  if the app has never connected to a band this install.
+- `readingsAreStale` (bool): true when not connected but a previous
+  reading exists, the signal to show cached data as cached rather than
+  live.
+- `scanResults` (`List<BandScanMatch>`): live candidates during
+  `startScan()`, pairing-flow use only.
+
+`BandStatusPresentation.of(state)` (`lib/core/utils/`) is the single
+place that turns a `BandLinkState` into a label/icon/color, Home's top
+bar, the band status card, and Band Detail all call it rather than each
+re-deciding what "reconnecting" looks like. Any new screen that shows
+band status should call it too instead of adding a fourth switch
+statement.
+
+Not wired up yet, deliberately: `SessionController`'s live HR/HRV during
+an active session are still the mock demo sequence, not real `heart_rate`
+telemetry from `BandController`. `heart_rate` is already a confirmed
+field and could be wired now; HRV isn't in the example payload at all
+(side_notes above: "derived from HR, no new sensor") so whether it
+arrives as a firmware-computed field or needs computing app-side from raw
+samples is still open. Don't wire one without the other without checking,
+that's a product decision (does a real session now show real HR, unblocked
+by an unrelated open question) more than a technical one.
 
 ## Timeline (for context, not a hard deadline the app has to hit)
 

@@ -1,15 +1,24 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
 import 'package:umbra/core/constants/app_icons.dart';
 import 'package:umbra/core/constants/app_theme.dart';
 import 'package:umbra/core/models/hydration_mode.dart';
 import 'package:umbra/core/models/session_record.dart';
+import 'package:umbra/core/state/band_controller.dart';
 import 'package:umbra/core/utils/navigation.dart';
 import 'package:umbra/core/widgets/app_switch.dart';
 import 'package:umbra/features/history/widgets/history_row.dart';
 import 'package:umbra/main.dart';
+
+/// Real pairing needs live BLE hardware, which the test environment
+/// doesn't have, so tests that need a connected band reach that state
+/// through BandController's test-only debug hook instead of a real scan.
+void _connectBandForTest(WidgetTester tester) {
+  Provider.of<BandController>(tester.element(find.byType(MaterialApp)), listen: false).debugConnectForTesting();
+}
 
 Future<void> _reachHome(WidgetTester tester) async {
   await tester.pumpWidget(const UmbraApp());
@@ -248,6 +257,8 @@ void main() {
 
   umbraTest('Band status card opens Band Detail, and forgetting the band flips it offline', (WidgetTester tester) async {
     await _reachHome(tester);
+    _connectBandForTest(tester);
+    await tester.pump();
 
     // "RESTING HR" is unique to the band status card; tapping it lands
     // anywhere inside the card's tap target, same as tapping the card.
@@ -275,6 +286,8 @@ void main() {
 
   umbraTest('Settings tab toggles are live and Manage band opens Band Detail', (WidgetTester tester) async {
     await _reachHome(tester);
+    _connectBandForTest(tester);
+    await tester.pump();
 
     await tester.tap(find.byIcon(AppIcons.settings));
     await tester.pump();
@@ -296,6 +309,8 @@ void main() {
 
   umbraTest('Edge-swipe from the left pops the current route, like native iOS back', platform: TargetPlatform.iOS, (WidgetTester tester) async {
     await _reachHome(tester);
+    _connectBandForTest(tester);
+    await tester.pump();
 
     await tester.tap(find.text('RESTING HR'));
     await tester.pump();
