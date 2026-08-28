@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:umbra/core/constants/app_icons.dart';
 import 'package:umbra/core/constants/app_theme.dart';
@@ -66,6 +67,19 @@ void umbraTest(
 }
 
 void main() {
+  // Splash reads OnboardingStorage (shared_preferences) to decide Home vs
+  // Onboarding. Without a mock store, the plugin's method channel has no
+  // handler in the test binding and the read never resolves, so Splash
+  // never navigates and every test that walks past it hangs waiting for a
+  // "Skip" button that's never reached. Reset before *every* test (not
+  // just once): reaching Home via BandPairingScreen persists the
+  // "onboarding complete" flag, and that mock store is otherwise shared
+  // across the whole file — without a reset, any test that runs after one
+  // that reached Home would find Splash routing straight past onboarding.
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   umbraTest('Splash screen shows the wordmark', (WidgetTester tester) async {
     await tester.pumpWidget(const UmbraApp());
     await tester.pump();
@@ -82,7 +96,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pumpAndSettle();
 
-    expect(find.text('Umbra reminds you to drink.'), findsOneWidget);
+    expect(find.text('Umbra reminds you to drink water.'), findsOneWidget);
     expect(find.text('Skip'), findsOneWidget);
   });
 

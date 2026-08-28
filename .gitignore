@@ -43,3 +43,31 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Apple signing material — never committed. The client provides these
+# separately (see docs/ios-ci-cd.md); CI consumes them from GitHub Secrets,
+# decoded to ephemeral runner temp files, never written into the repo.
+*.p8
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+*.keychain
+*.keychain-db
+/ios/*.mobileprovision
+/ios/*.p12
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+fastlane/README.md
+vendor/bundle/
+.bundle/
+
+# Local secret/env files
+.env
+.env.*
+!.env.example
