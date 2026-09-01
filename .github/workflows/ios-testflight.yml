@@ -66,6 +66,12 @@ jobs:
             exit 1
           fi
 
+      - name: Compute build number
+        # GitHub Actions expressions don't support arithmetic (`+` isn't a
+        # valid operator in ${{ }}), so this has to happen in shell instead
+        # of inline in an env: block.
+        run: echo "BUILD_NUMBER=$(( ${{ github.run_number }} + ${{ env.BUILD_NUMBER_OFFSET }} ))" >> "$GITHUB_ENV"
+
       - name: Build and upload to TestFlight
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -75,5 +81,4 @@ jobs:
           IOS_DIST_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DIST_CERTIFICATE_PASSWORD }}
           IOS_DIST_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_DIST_PROVISIONING_PROFILE_BASE64 }}
           IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
-          BUILD_NUMBER: ${{ github.run_number + env.BUILD_NUMBER_OFFSET }}
         run: bundle exec fastlane ios beta
