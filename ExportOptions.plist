@@ -5,7 +5,7 @@
 <dict>
 
     <key>method</key>
-    <string>app-store-connect</string>
+    <string>app-store</string>
 
     <key>teamID</key>
     <string>8764YSZYXR</string>
