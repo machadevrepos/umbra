@@ -31,6 +31,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # macos-15's default Xcode (16.4, iOS 18.5 SDK) is no longer
+      # accepted by App Store Connect - Apple now requires the iOS 26 SDK
+      # (Xcode 26+) for new uploads. GitHub's runner images bundle several
+      # Xcode versions side by side; this picks whichever is newest rather
+      # than hardcoding a version number that might not exist on the image.
+      - name: Select newest available Xcode
+        run: |
+          echo "Installed Xcode versions:"
+          ls -d /Applications/Xcode*.app 2>/dev/null
+          LATEST_XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$LATEST_XCODE" ]; then
+            LATEST_XCODE="/Applications/Xcode.app"
+          fi
+          echo "Selecting: $LATEST_XCODE"
+          sudo xcode-select -s "$LATEST_XCODE"
+          xcodebuild -version
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
