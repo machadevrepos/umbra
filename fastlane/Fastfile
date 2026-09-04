@@ -132,13 +132,29 @@ platform :ios do
 
     UI.message("App: #{app.name} (#{app.bundle_id}), Apple ID #{app.id}")
 
-    builds = app.get_builds(sort: "-uploadedDate", limit: 10)
-    UI.message("No builds found at all.") if builds.empty?
+    builds = app.get_builds(sort: "-uploadedDate", limit: 10, includes: Spaceship::ConnectAPI::Build::ESSENTIAL_INCLUDES)
+    UI.important("No builds found at all.") if builds.empty?
 
     builds.each do |b|
-      groups = b.get_beta_groups.map(&:name).join(", ")
-      groups = "(not in any testing group)" if groups.empty?
-      UI.message("Build #{b.version} — version #{b.app_version} — #{b.processing_state} — uploaded #{b.uploaded_date} — groups: #{groups}")
+      compliance = begin
+        b.missing_export_compliance? ? "MISSING export compliance" : "export compliance OK"
+      rescue StandardError
+        "export compliance unknown"
+      end
+      UI.message("Build #{b.version} (app version #{b.app_version}) — #{b.processing_state} — uploaded #{b.uploaded_date} — #{compliance}")
+    end
+
+    UI.message("")
+    UI.message("TestFlight groups:")
+    groups = app.get_beta_groups
+    UI.important("No TestFlight groups exist on this app yet.") if groups.empty?
+
+    groups.each do |g|
+      kind = g.is_internal_group ? "internal" : "external"
+      auto = g.has_access_to_all_builds ? "auto-distributes every processed build" : "builds must be added manually"
+      build_versions = g.fetch_builds.map(&:version)
+      build_versions = build_versions.empty? ? "(no builds assigned)" : build_versions.join(", ")
+      UI.message("  #{g.name} (#{kind}, #{auto}) — testers: #{g.beta_testers&.length || 0} — builds in group: #{build_versions}")
     end
   end
 end
