@@ -114,4 +114,31 @@ platform :ios do
   ensure
     teardown_signing
   end
+
+  desc "Read-only: list recent builds in App Store Connect and which TestFlight groups they're in"
+  lane :check_status do
+    require "spaceship"
+
+    app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_content: ENV.fetch("ASC_API_KEY_CONTENT"),
+      is_key_content_base64: false,
+      in_house: false,
+    )
+
+    app = Spaceship::ConnectAPI::App.all(filter: { bundleId: "com.umbrawellness.umbra" }).first
+    UI.user_error!("No app found for bundle id com.umbrawellness.umbra") unless app
+
+    UI.message("App: #{app.name} (#{app.bundle_id}), Apple ID #{app.id}")
+
+    builds = app.get_builds(sort: "-uploadedDate", limit: 10)
+    UI.message("No builds found at all.") if builds.empty?
+
+    builds.each do |b|
+      groups = b.get_beta_groups.map(&:name).join(", ")
+      groups = "(not in any testing group)" if groups.empty?
+      UI.message("Build #{b.version} — version #{b.app_version} — #{b.processing_state} — uploaded #{b.uploaded_date} — groups: #{groups}")
+    end
+  end
 end
