@@ -32,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   HydrationMode _mode = HydrationMode.night;
   final Map<HydrationMode, int> _intervalByMode = {
     HydrationMode.daily: 90,
-    HydrationMode.night: 35,
+    HydrationMode.night: 40,
   };
 
   bool _contentVisible = false;

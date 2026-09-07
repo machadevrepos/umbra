@@ -39,6 +39,7 @@ dependencies:
   flutter_reactive_ble: ^5.4.2
   permission_handler: ^11.4.0
   shared_preferences: ^2.5.5
+  package_info_plus: ^8.3.1
 
 dev_dependencies:
   flutter_test:
@@ -50,6 +51,20 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+# Regenerate with: dart run flutter_launcher_icons
+# Source images live in assets/icon/ — app_icon.png is the flat icon (used
+# for iOS and legacy Android), app_icon_foreground.png is the same mark on
+# transparent background with extra inset padding for Android's adaptive
+# icon mask, which crops more aggressively than iOS's rounded square.
+flutter_launcher_icons:
+  image_path: "assets/icon/app_icon.png"
+  android: true
+  ios: true
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

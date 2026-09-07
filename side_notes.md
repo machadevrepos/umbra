@@ -29,13 +29,16 @@ band/PCB/enclosure, not for the app we're building here).
 
 | Mode | Default interval | Adjustable options |
 |---|---|---|
-| Night Mode (active while drinking) | **35 min** | 20 / 30 / 45 / 60 min |
+| Night Mode (active while drinking) | **40 min** | 20 / 30 / 45 / 60 min |
 | Daily Mode (passive all-day hydration) | **90 min** | 20 / 30 / 45 / 60 min |
 
-Note: an earlier draft in the client doc said Night default 40 min with
-20/30/40/60 options, a later "few key reminders" follow-up from the same
-client explicitly updated this to **35 min default, 20/30/45/60 options**.
-Treat the later message as authoritative; the 40/40 numbers are superseded.
+Note: the client's original doc said Night default 40 min with 20/30/40/60
+options; a later "few key reminders" follow-up changed this to 35 min
+default with 20/30/45/60 options; then Brad's build-107 TestFlight review
+(2026-09-07) asked for the default back to 40 min for the beta, keeping
+the 20/30/45/60 options from the second message. Treat this as the current
+authoritative combination — 40 min default, 20/30/45/60 options — unless
+a later message supersedes it again.
 
 Haptic pattern: **double tap, two short, firm pulses**, strong enough to
 feel clearly in a loud bar or festival environment. This is a firmware/

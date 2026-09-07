@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_icons.dart';
@@ -71,7 +72,7 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: AppTheme.spaceM),
           _SettingsGroup(
             children: [
-              _SettingsRow(title: 'Version', trailing: Text('1.0.0 (1)', style: AppTypography.bodyM())),
+              _SettingsRow(title: 'Version', trailing: const _AppVersionLabel()),
             ],
           ),
         ],
@@ -96,6 +97,22 @@ class _SettingsGroup extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _AppVersionLabel extends StatelessWidget {
+  const _AppVersionLabel();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snapshot) {
+        final info = snapshot.data;
+        final label = info == null ? '' : '${info.version} (${info.buildNumber})';
+        return Text(label, style: AppTypography.bodyM());
+      },
     );
   }
 }

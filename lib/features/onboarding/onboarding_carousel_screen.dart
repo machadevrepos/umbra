@@ -23,7 +23,7 @@ const List<_OnboardingPageData> _kPages = [
   _OnboardingPageData(
     mood: OnboardingMood.night,
     headline: 'Built for the night out.',
-    body: 'Night Mode buzzes every 35 minutes by default while you\'re out. Adjust it any time.',
+    body: 'Night Mode buzzes every 40 minutes by default while you\'re out. Adjust it any time.',
   ),
   _OnboardingPageData(
     mood: OnboardingMood.morning,

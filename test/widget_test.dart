@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -78,6 +79,19 @@ void main() {
   // that reached Home would find Splash routing straight past onboarding.
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+
+    // Settings > About reads the real build via PackageInfo.fromPlatform();
+    // without a mock, the plugin channel has no test-binding handler and
+    // resolves to an error, silently rendering an empty label instead of
+    // failing loud. Fixed values here so the Settings test below can
+    // actually assert the label renders build 107, not the pubspec default.
+    PackageInfo.setMockInitialValues(
+      appName: 'Umbra',
+      packageName: 'com.umbrawellness.umbra',
+      version: '1.0.0',
+      buildNumber: '107',
+      buildSignature: '',
+    );
   });
 
   umbraTest('Splash screen shows the wordmark', (WidgetTester tester) async {
@@ -309,6 +323,11 @@ void main() {
 
     expect(find.text('Morning check-in'), findsOneWidget);
     expect(find.byType(AppSwitch), findsNWidgets(2));
+
+    // Version label must reflect the real installed build, not a
+    // hardcoded string — settle the pending PackageInfo future first.
+    await tester.pumpAndSettle();
+    expect(find.text('1.0.0 (107)'), findsOneWidget);
 
     // Both toggles default on; flipping one shouldn't disturb the other.
     await tester.tap(find.byType(AppSwitch).first);
