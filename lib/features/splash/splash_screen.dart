@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_theme.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/state/onboarding_storage.dart';
 import '../onboarding/onboarding_carousel_screen.dart';
+import '../shell/main_shell.dart';
 
 /// The one-time brand moment on launch. Deliberately the single place in
 /// the app that leans on the display face at real size and lets an
@@ -11,12 +13,6 @@ import '../onboarding/onboarding_carousel_screen.dart';
 /// "No animation exists purely for delight with no functional purpose").
 /// A splash reveal is the one legitimate exception: its function *is* the
 /// brand moment.
-///
-/// TODO: this always routes to Onboarding right now. Once there's a
-/// persisted "has completed onboarding" flag, a returning user should
-/// route straight to Home instead. Deferred until the state-management
-/// decision (see side_notes.md) is made, rather than guessing at a
-/// persistence approach for one screen in isolation.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -60,6 +56,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Future<void> _scheduleNavigation(bool reduceMotion) async {
+    // Kicked off alongside the entrance animation, not after it, so the
+    // preferences read doesn't add its own delay on top of the brand hold.
+    final hasCompletedOnboardingFuture = OnboardingStorage.hasCompletedOnboarding();
     try {
       await _controller.forward();
     } on TickerCanceled {
@@ -68,7 +67,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     if (!mounted) return;
     await Future.delayed(reduceMotion ? const Duration(milliseconds: 300) : _holdDuration);
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const OnboardingCarouselScreen()));
+    final hasCompletedOnboarding = await hasCompletedOnboardingFuture;
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => hasCompletedOnboarding ? const MainShell() : const OnboardingCarouselScreen(),
+      ),
+    );
   }
 
   @override

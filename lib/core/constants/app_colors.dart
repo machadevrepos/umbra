@@ -11,6 +11,7 @@ class AppColors {
   static const Color bgSurfaceRaised = Color(0xFF17161A);
   static const Color bgHairline = Color(0xFF232226);
 
+
   // ── Gold accent, spend it deliberately ─────────────────────────────────
   static const Color gold = Color(0xFFC9A227);
   static const Color goldMuted = Color(0xFF8C6D1F);

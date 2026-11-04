@@ -1,21 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import '../../core/ble/band_ble_constants.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_icons.dart';
 import '../../core/constants/app_theme.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/state/band_controller.dart';
+import '../../core/state/onboarding_storage.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/pressable_scale.dart';
 import '../../core/widgets/pulse_radar.dart';
 import '../shell/main_shell.dart';
 
-enum _PairingStage { scanning, found, connecting, connected }
-
-/// Mock BLE flow for design review: scanning/found/connecting/connected
-/// timings are simulated with `Timer`s. Swaps to the real `flutter_reactive_ble`
-/// (or equivalent) scan/connect stream once the BLE integration layer
-/// exists; the state machine and its visuals shouldn't need to change
-/// shape, just where the state transitions come from.
 class BandPairingScreen extends StatefulWidget {
   const BandPairingScreen({super.key});
 
@@ -24,41 +22,64 @@ class BandPairingScreen extends StatefulWidget {
 }
 
 class _BandPairingScreenState extends State<BandPairingScreen> {
-  _PairingStage _stage = _PairingStage.scanning;
-  Timer? _timer;
+  late final BandController _band;
+  Timer? _scanTimeoutTimer;
+  Timer? _handoffTimer;
+  bool _timedOut = false;
+  bool _connectedHandled = false;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(milliseconds: 2200), () {
-      if (mounted) setState(() => _stage = _PairingStage.found);
+    _band = context.read<BandController>();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startScan());
+  }
+
+  void _startScan() {
+    final band = _band;
+    if (band.connected) return;
+    _timedOut = false;
+    band.startScan();
+    _scanTimeoutTimer?.cancel();
+    _scanTimeoutTimer = Timer(BandBleConstants.scanTimeout, () {
+      if (_band.state == BandLinkState.scanning && _band.scanResults.isEmpty) {
+        _band.stopScan();
+        if (mounted) setState(() => _timedOut = true);
+      }
     });
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  void _connect(BandScanMatch device) {
+    _scanTimeoutTimer?.cancel();
+    _band.connectTo(device);
   }
 
-  void _connect() {
-    setState(() => _stage = _PairingStage.connecting);
-    _timer = Timer(const Duration(milliseconds: 1200), () {
-      if (!mounted) return;
-      setState(() => _stage = _PairingStage.connected);
-      _timer = Timer(const Duration(milliseconds: 700), () {
-        if (mounted) _goHome();
-      });
+  void _handleConnected() {
+    if (_connectedHandled) return;
+    _connectedHandled = true;
+    _handoffTimer = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) _goHome();
     });
   }
 
   void _goHome() {
+    OnboardingStorage.setCompleted();
     Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const MainShell()));
   }
 
   @override
+  void dispose() {
+    _scanTimeoutTimer?.cancel();
+    _handoffTimer?.cancel();
+    _band.stopScan();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final connected = _stage == _PairingStage.connected;
+    final band = context.watch<BandController>();
+    final connected = band.state == BandLinkState.connected;
+    if (connected) _handleConnected();
 
     return Scaffold(
       backgroundColor: AppColors.bgVoid,
@@ -83,26 +104,34 @@ class _BandPairingScreenState extends State<BandPairingScreen> {
                       ? _ConnectedMark(key: const ValueKey('connected'))
                       : PulseRadar(
                           key: const ValueKey('radar'),
-                          child: const Icon(AppIcons.bluetooth, size: AppTheme.iconL, color: AppColors.gold),
+                          child: Icon(_stageIcon(band.state), size: AppTheme.iconL, color: AppColors.gold),
                         ),
                 ),
               ),
               const SizedBox(height: AppTheme.spaceXxl),
-              Center(child: _StageLabel(stage: _stage)),
+              Center(child: _StageLabel(state: band.state, timedOut: _timedOut)),
               const SizedBox(height: AppTheme.spaceXl),
               AnimatedSwitcher(
                 duration: AppTheme.animFast,
-                child: _stage == _PairingStage.found || _stage == _PairingStage.connecting
-                    ? const _DeviceCard(key: ValueKey('device'))
+                child: band.scanResults.isNotEmpty
+                    ? Column(
+                        key: const ValueKey('devices'),
+                        children: [
+                          for (final device in band.scanResults) ...[
+                            _DeviceCard(
+                              device: device,
+                              connecting: band.state == BandLinkState.connecting,
+                              onTap: band.state == BandLinkState.connecting ? null : () => _connect(device),
+                            ),
+                            const SizedBox(height: AppTheme.spaceM),
+                          ],
+                        ],
+                      )
                     : const SizedBox(key: ValueKey('empty'), height: 0),
               ),
               const Spacer(),
               if (!connected) ...[
-                AppButton(
-                  label: _stage == _PairingStage.connecting ? 'Connecting' : 'Connect',
-                  onTap: _stage == _PairingStage.found ? _connect : null,
-                  loading: _stage == _PairingStage.connecting,
-                ),
+                _PrimaryAction(state: band.state, timedOut: _timedOut, onRetry: _startScan),
                 const SizedBox(height: AppTheme.spaceM),
                 Center(
                   child: PressableScale(
@@ -125,56 +154,120 @@ class _BandPairingScreenState extends State<BandPairingScreen> {
       ),
     );
   }
+
+  IconData _stageIcon(BandLinkState state) {
+    return switch (state) {
+      BandLinkState.bluetoothUnavailable => AppIcons.bluetoothOff,
+      BandLinkState.permissionDenied => AppIcons.bluetoothOff,
+      _ => AppIcons.bluetooth,
+    };
+  }
 }
 
-class _StageLabel extends StatelessWidget {
-  const _StageLabel({required this.stage});
-  final _PairingStage stage;
+/// The screen's one primary action, its label and behavior both follow
+/// from [state]: retrying a scan, opening system settings for a denied
+/// permission, or nothing at all while a scan or connection is already
+/// underway (the radar above is the only feedback needed then).
+class _PrimaryAction extends StatelessWidget {
+  const _PrimaryAction({required this.state, required this.timedOut, required this.onRetry});
+
+  final BandLinkState state;
+  final bool timedOut;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    final text = switch (stage) {
-      _PairingStage.scanning => 'Scanning for nearby bands…',
-      _PairingStage.found => 'Band found',
-      _PairingStage.connecting => 'Connecting…',
-      _PairingStage.connected => 'Connected',
+    switch (state) {
+      case BandLinkState.permissionDenied:
+        return AppButton(label: 'Open Settings', icon: AppIcons.bluetooth, onTap: openAppSettings);
+      case BandLinkState.bluetoothUnavailable:
+        return AppButton(label: 'Try again', icon: AppIcons.bluetooth, onTap: onRetry);
+      case BandLinkState.connecting:
+        return const AppButton(label: 'Connecting', onTap: null, loading: true);
+      case BandLinkState.scanning:
+        if (timedOut) return AppButton(label: 'Try again', icon: AppIcons.bluetooth, onTap: onRetry);
+        return const AppButton(label: 'Scanning', onTap: null, loading: true);
+      case BandLinkState.idle:
+      case BandLinkState.reconnecting:
+      case BandLinkState.connected:
+        return AppButton(label: 'Try again', icon: AppIcons.bluetooth, onTap: onRetry);
+    }
+  }
+}
+
+class _StageLabel extends StatelessWidget {
+  const _StageLabel({required this.state, required this.timedOut});
+  final BandLinkState state;
+  final bool timedOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = switch (state) {
+      BandLinkState.bluetoothUnavailable => 'Turn on Bluetooth to find your band',
+      BandLinkState.permissionDenied => 'Umbra needs Bluetooth permission to find your band',
+      BandLinkState.scanning => timedOut ? "Didn't find a band nearby" : 'Scanning for nearby bands…',
+      BandLinkState.connecting => 'Connecting…',
+      BandLinkState.reconnecting => 'Reconnecting…',
+      BandLinkState.connected => 'Connected',
+      BandLinkState.idle => 'Ready to scan',
     };
     return AnimatedSwitcher(
       duration: AppTheme.animFast,
-      child: Text(text, key: ValueKey(text), style: AppTypography.bodyL(color: AppColors.textSecondary)),
+      child: Text(
+        text,
+        key: ValueKey(text),
+        textAlign: TextAlign.center,
+        style: AppTypography.bodyL(color: AppColors.textSecondary),
+      ),
     );
   }
 }
 
 class _DeviceCard extends StatelessWidget {
-  const _DeviceCard({super.key});
+  const _DeviceCard({required this.device, required this.connecting, required this.onTap});
+
+  final BandScanMatch device;
+  final bool connecting;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.spaceL),
-      decoration: BoxDecoration(color: AppColors.bgSurface, borderRadius: BorderRadius.circular(AppTheme.radiusM)),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(color: AppColors.bgHairline, shape: BoxShape.circle),
-            child: const Icon(AppIcons.moon, size: AppTheme.iconM, color: AppColors.gold),
-          ),
-          const SizedBox(width: AppTheme.spaceL),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Umbra-4F21', style: AppTypography.titleS()),
-              const SizedBox(height: 2),
-              Text('Nearby · Strong signal', style: AppTypography.bodyS()),
-            ],
-          ),
-        ],
+    return PressableScale(
+      onTap: onTap,
+      hapticOnTap: true,
+      semanticLabel: 'Connect to ${device.name}',
+      child: Container(
+        padding: const EdgeInsets.all(AppTheme.spaceL),
+        decoration: BoxDecoration(color: AppColors.bgSurface, borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(color: AppColors.bgHairline, shape: BoxShape.circle),
+              child: const Icon(AppIcons.moon, size: AppTheme.iconM, color: AppColors.gold),
+            ),
+            const SizedBox(width: AppTheme.spaceL),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(device.name, style: AppTypography.titleS()),
+                  const SizedBox(height: 2),
+                  Text(_signalLabel(device.rssi), style: AppTypography.bodyS()),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  String _signalLabel(int rssi) {
+    final strength = rssi >= -60 ? 'Strong signal' : (rssi >= -75 ? 'Good signal' : 'Weak signal');
+    return 'Nearby · $strength';
   }
 }
 

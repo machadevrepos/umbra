@@ -25,7 +25,7 @@ class SessionController extends ChangeNotifier {
 
   int elapsedSeconds = 0;
   int remindersFired = 0;
-  int intervalMinutes = 35;
+  int intervalMinutes = 40;
 
   int _hrIndex = 0;
   int _hrTickCounter = 0;
@@ -36,8 +36,8 @@ class SessionController extends ChangeNotifier {
 
   // Demo-seeded countdown so the full "ring fills, reminder fires, resets"
   // loop is observable within a short test session instead of the real
-  // configured interval (35+ minutes). Swap for the band's actual next-
-  // reminder timestamp once BLE telemetry exists.
+  // configured interval (20-90 minutes depending on mode). Swap for the
+  // band's actual next-reminder timestamp once BLE telemetry exists.
   static const int demoReminderSeconds = 90;
   int secondsUntilReminder = demoReminderSeconds;
 

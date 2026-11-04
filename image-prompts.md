@@ -64,8 +64,8 @@ cartoon, not a sticker, not photorealistic, not 3D render.
 
 ## 1. App icon, needed now, every build needs a launcher icon
 
-**Save as:** `app_icon.png`
-**Path:** `assets/icon/app_icon.png`
+**Save as:** `app_icon.JPG.jpeg`
+**Path:** `assets/icon/app_icon.JPG.jpeg`
 **Size:** 1024×1024px, PNG, **no transparency** (flat background fills
 the entire canvas, iOS rejects alpha-channel app icons), no rounded
 corners baked in (the OS masks that automatically at each platform's

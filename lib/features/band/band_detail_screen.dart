@@ -5,6 +5,8 @@ import '../../core/constants/app_icons.dart';
 import '../../core/constants/app_theme.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/state/band_controller.dart';
+import '../../core/utils/band_status_presentation.dart';
+import '../../core/utils/date_format.dart';
 import '../../core/utils/navigation.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/labeled_stat.dart';
@@ -18,7 +20,7 @@ class BandDetailScreen extends StatelessWidget {
 
   Future<void> _forget(BuildContext context, BandController band) async {
     final confirmed = await showForgetBandSheet(context);
-    if (confirmed) band.setConnected(false);
+    if (confirmed) await band.forget();
   }
 
   Future<void> _reconnect(BuildContext context) async {
@@ -28,6 +30,10 @@ class BandDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final band = context.watch<BandController>();
+    final status = BandStatusPresentation.of(band.state);
+    final hasPairedDevice = band.state == BandLinkState.connected || band.state == BandLinkState.reconnecting;
+    final hasReading = band.lastSeenAt != null;
+    final valueColor = band.readingsAreStale ? AppColors.textMuted : AppColors.textPrimary;
 
     return Scaffold(
       backgroundColor: AppColors.bgVoid,
@@ -64,14 +70,18 @@ class BandDetailScreen extends StatelessWidget {
                       child: Icon(AppIcons.moon, size: AppTheme.iconXl, color: band.connected ? AppColors.gold : AppColors.textMuted),
                     ),
                     const SizedBox(height: AppTheme.spaceL),
-                    Text('Umbra-4F21', style: AppTypography.titleL()),
+                    Text(band.deviceName, style: AppTypography.titleL()),
                     const SizedBox(height: AppTheme.spaceS),
                     StatusChip(
-                      label: band.connected ? 'Connected' : 'Offline',
-                      icon: band.connected ? AppIcons.bluetooth : AppIcons.bluetoothOff,
-                      color: band.connected ? AppColors.success : AppColors.textMuted,
+                      label: status.label,
+                      icon: status.icon,
+                      color: status.color,
                       tint: band.connected ? AppColors.successTint : AppColors.bgHairline,
                     ),
+                    if (band.readingsAreStale && band.lastSeenAt != null) ...[
+                      const SizedBox(height: AppTheme.spaceS),
+                      Text('Last seen ${relativeTimeAgoLabel(band.lastSeenAt!)}', style: AppTypography.bodyS()),
+                    ],
                   ],
                 ),
               ),
@@ -81,8 +91,20 @@ class BandDetailScreen extends StatelessWidget {
                 decoration: BoxDecoration(color: AppColors.bgSurface, borderRadius: BorderRadius.circular(AppTheme.radiusM)),
                 child: Row(
                   children: [
-                    Expanded(child: LabeledStat(label: 'Battery', value: '${band.battery}%', valueStyle: AppTypography.titleM())),
-                    Expanded(child: LabeledStat(label: 'Resting HR', value: '${band.restingHr} bpm', valueStyle: AppTypography.titleM())),
+                    Expanded(
+                      child: LabeledStat(
+                        label: 'Battery',
+                        value: hasReading ? '${band.battery}%' : 'No data',
+                        valueStyle: AppTypography.titleM(color: valueColor),
+                      ),
+                    ),
+                    Expanded(
+                      child: LabeledStat(
+                        label: 'Resting HR',
+                        value: hasReading ? '${band.restingHr} bpm' : 'No data',
+                        valueStyle: AppTypography.titleM(color: valueColor),
+                      ),
+                    ),
                     Expanded(child: LabeledStat(label: 'Firmware', value: '1.2.0', valueStyle: AppTypography.titleM())),
                   ],
                 ),
@@ -93,7 +115,7 @@ class BandDetailScreen extends StatelessWidget {
                 style: AppTypography.bodyS(),
               ),
               const Spacer(),
-              if (band.connected)
+              if (hasPairedDevice)
                 AppButton(
                   label: 'Forget this band',
                   variant: AppButtonVariant.secondary,

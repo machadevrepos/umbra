@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.10.8
@@ -36,6 +36,10 @@ dependencies:
   cupertino_icons: ^1.0.8
   google_fonts: ^8.2.0
   provider: ^6.1.5+1
+  flutter_reactive_ble: ^5.4.2
+  permission_handler: ^11.4.0
+  shared_preferences: ^2.5.5
+  package_info_plus: ^8.3.1
 
 dev_dependencies:
   flutter_test:
@@ -47,6 +51,20 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+# Regenerate with: dart run flutter_launcher_icons
+# Source images live in assets/icon/ — app_icon.png is the flat icon (used
+# for iOS and legacy Android), app_icon_foreground.png is the same mark on
+# transparent background with extra inset padding for Android's adaptive
+# icon mask, which crops more aggressively than iOS's rounded square.
+flutter_launcher_icons:
+  image_path: "assets/icon/app_icon.png"
+  android: true
+  ios: true
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
