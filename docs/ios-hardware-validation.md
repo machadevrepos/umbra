@@ -61,5 +61,17 @@ the console includes the underlying exception and stack trace.
 Windows unit/widget tests cover native notification acknowledgement delays,
 immediate data, rejected subscriptions, 16-bit UUID resolution, operation
 serialization, and controller readiness, alongside existing hardware/session
-tests. These tests do not establish physical iPhone interoperability or iOS
-build success. macOS compilation and the physical checks above remain required.
+tests. These tests do not establish physical iPhone interoperability.
+
+## GitHub macOS validation (2026-11-16)
+
+[TestFlight run 9](https://github.com/machadevrepos/umbra/actions/runs/43823305352)
+built commit `6ea6b52e3bdfa5333c1fd4dce8d9dfe341294654` as build 109.
+The analyzer, all 31 tests, unsigned iOS release compilation, and signed IPA
+archive/export passed. App Store Connect rejected the upload with:
+
+> A required agreement is missing or has expired.
+
+The Apple Developer Account Holder must review pending agreements in the Apple
+Developer account/App Store Connect before retrying deployment. Build 109 was
+not uploaded. Physical iPhone checks above remain required after distribution.
