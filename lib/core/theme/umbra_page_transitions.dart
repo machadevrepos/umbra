@@ -37,15 +37,20 @@ class UmbraPageTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final content = enableEdgeSwipeBack ? UmbraBackGestureDetector<T>(route: route, child: child) : child;
+    final content = enableEdgeSwipeBack
+        ? UmbraBackGestureDetector<T>(route: route, child: child)
+        : child;
 
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     if (reduceMotion) return content;
 
     // While a finger is actively dragging the page, the curve must be
     // linear so the fade/scale tracks 1:1 with the drag instead of easing
     // against it: same reasoning as Cupertino's `linearTransition`.
-    final curve = (enableEdgeSwipeBack && route.popGestureInProgress) ? Curves.linear : AppTheme.motionCurve;
+    final curve = (enableEdgeSwipeBack && route.popGestureInProgress)
+        ? Curves.linear
+        : AppTheme.motionCurve;
     final curved = CurvedAnimation(parent: animation, curve: curve);
 
     return FadeTransition(

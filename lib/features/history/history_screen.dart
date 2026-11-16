@@ -14,30 +14,46 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final history = context.watch<SessionStore>().history;
+    final store = context.watch<SessionStore>();
+    final history = store.history;
 
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppTheme.screenPaddingH),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.screenPaddingH,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: AppTheme.spaceM),
             Text('History', style: AppTypography.titleL()),
+            if (store.storageError != null) ...[
+              const SizedBox(height: AppTheme.spaceM),
+              Text(
+                store.storageError!,
+                style: AppTypography.bodyS(color: AppColors.textSecondary),
+              ),
+            ],
             const SizedBox(height: AppTheme.spaceXl),
             Expanded(
               child: history.isEmpty
                   ? const _EmptyHistory()
                   : ListView.separated(
-                      padding: const EdgeInsets.only(bottom: AppTheme.spaceXxxl),
+                      padding: const EdgeInsets.only(
+                        bottom: AppTheme.spaceXxxl,
+                      ),
                       itemCount: history.length,
-                      separatorBuilder: (context, i) => const SizedBox(height: AppTheme.spaceM),
+                      separatorBuilder: (context, i) =>
+                          const SizedBox(height: AppTheme.spaceM),
                       itemBuilder: (context, i) {
                         final session = history[i];
                         return HistoryRow(
                           session: session,
-                          onTap: () => pushOnce(context, (_) => SessionDetailScreen(sessionId: session.id)),
+                          onTap: () => pushOnce(
+                            context,
+                            (_) => SessionDetailScreen(sessionId: session.id),
+                          ),
                         );
                       },
                     ),
@@ -60,11 +76,21 @@ class _EmptyHistory extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(AppIcons.moon, size: AppTheme.iconXl, color: AppColors.textMuted),
+            const Icon(
+              AppIcons.moon,
+              size: AppTheme.iconXl,
+              color: AppColors.textMuted,
+            ),
             const SizedBox(height: AppTheme.spaceL),
-            Text('Your nights start here.', style: AppTypography.bodyL(color: AppColors.textSecondary)),
+            Text(
+              'Your nights start here.',
+              style: AppTypography.bodyL(color: AppColors.textSecondary),
+            ),
             const SizedBox(height: AppTheme.spaceXs),
-            Text('Sessions you track will show up in this list.', style: AppTypography.bodyS()),
+            Text(
+              'Sessions you track will show up in this list.',
+              style: AppTypography.bodyS(),
+            ),
           ],
         ),
       ),

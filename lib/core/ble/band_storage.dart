@@ -13,7 +13,10 @@ class BandStorage {
   /// ability to remember a band (a full disk, a platform with no
   /// preferences plugin registered) should never block the connection
   /// state change the caller is in the middle of making.
-  static Future<void> saveLastDevice({required String id, required String name}) async {
+  static Future<void> saveLastDevice({
+    required String id,
+    required String name,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_deviceIdKey, id);

@@ -36,8 +36,14 @@ class _RatingTrendChartState extends State<RatingTrendChart> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('${selectedSession.checkInRating}/10', style: AppTypography.titleM(color: AppColors.gold)),
-            Text(relativeDayLabel(selectedSession.startedAt), style: AppTypography.bodyS()),
+            Text(
+              '${selectedSession.checkInRating}/10',
+              style: AppTypography.titleM(color: AppColors.gold),
+            ),
+            Text(
+              relativeDayLabel(selectedSession.startedAt),
+              style: AppTypography.bodyS(),
+            ),
           ],
         ),
         const SizedBox(height: AppTheme.spaceM),
@@ -48,14 +54,20 @@ class _RatingTrendChartState extends State<RatingTrendChart> {
             children: List.generate(widget.sessions.length, (i) {
               final session = widget.sessions[i];
               final selected = i == _selected;
-              final heightFactor = (session.checkInRating! / 10).clamp(0.04, 1.0);
+              final heightFactor = (session.checkInRating! / 10).clamp(
+                0.04,
+                1.0,
+              );
 
               return Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceXs),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spaceXs,
+                  ),
                   child: PressableScale(
                     onTap: () => setState(() => _selected = i),
-                    semanticLabel: '${relativeDayLabel(session.startedAt)}, rated ${session.checkInRating} out of 10',
+                    semanticLabel:
+                        '${relativeDayLabel(session.startedAt)}, rated ${session.checkInRating} out of 10',
                     child: Align(
                       alignment: Alignment.bottomCenter,
                       child: FractionallySizedBox(
@@ -65,8 +77,12 @@ class _RatingTrendChartState extends State<RatingTrendChart> {
                           duration: AppTheme.animFast,
                           curve: AppTheme.motionCurve,
                           decoration: BoxDecoration(
-                            color: selected ? AppColors.gold : AppColors.bgHairline,
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppTheme.radiusS)),
+                            color: selected
+                                ? AppColors.gold
+                                : AppColors.bgHairline,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(AppTheme.radiusS),
+                            ),
                           ),
                         ),
                       ),
@@ -81,8 +97,14 @@ class _RatingTrendChartState extends State<RatingTrendChart> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(relativeDayLabel(widget.sessions.first.startedAt), style: AppTypography.bodyS()),
-            Text(relativeDayLabel(widget.sessions.last.startedAt), style: AppTypography.bodyS()),
+            Text(
+              relativeDayLabel(widget.sessions.first.startedAt),
+              style: AppTypography.bodyS(),
+            ),
+            Text(
+              relativeDayLabel(widget.sessions.last.startedAt),
+              style: AppTypography.bodyS(),
+            ),
           ],
         ),
       ],

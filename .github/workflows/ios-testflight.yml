@@ -89,6 +89,14 @@ jobs:
         # of inline in an env: block.
         run: echo "BUILD_NUMBER=$(( ${{ github.run_number }} + ${{ env.BUILD_NUMBER_OFFSET }} ))" >> "$GITHUB_ENV"
 
+      - name: Analyze and test release sources
+        run: |
+          flutter analyze --no-pub
+          flutter test --no-pub
+
+      - name: Prepare and validate iOS release
+        run: flutter build ios --release --no-codesign --build-number "$BUILD_NUMBER"
+
       - name: Build and upload to TestFlight
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}

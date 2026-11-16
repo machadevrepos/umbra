@@ -20,7 +20,12 @@ class OnboardingBackground extends StatelessWidget {
     };
     return Container(
       color: AppColors.bgVoid,
-      child: Image.asset(asset, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+      child: Image.asset(
+        asset,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+      ),
     );
   }
 }

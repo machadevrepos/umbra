@@ -27,7 +27,9 @@ class _ForgetBandSheet extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.bgSurfaceRaised,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusL)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusL),
+        ),
       ),
       padding: EdgeInsets.only(
         left: AppTheme.screenPaddingH,
@@ -43,7 +45,10 @@ class _ForgetBandSheet extends StatelessWidget {
             child: Container(
               width: 36,
               height: 4,
-              decoration: BoxDecoration(color: AppColors.bgHairline, borderRadius: BorderRadius.circular(AppTheme.radiusS)),
+              decoration: BoxDecoration(
+                color: AppColors.bgHairline,
+                borderRadius: BorderRadius.circular(AppTheme.radiusS),
+              ),
             ),
           ),
           const SizedBox(height: AppTheme.spaceL),
@@ -54,7 +59,10 @@ class _ForgetBandSheet extends StatelessWidget {
             style: AppTypography.bodyM(),
           ),
           const SizedBox(height: AppTheme.spaceXl),
-          AppButton(label: 'Forget band', onTap: () => Navigator.of(context).pop(true)),
+          AppButton(
+            label: 'Forget band',
+            onTap: () => Navigator.of(context).pop(true),
+          ),
           const SizedBox(height: AppTheme.spaceM),
           AppButton(
             label: 'Cancel',

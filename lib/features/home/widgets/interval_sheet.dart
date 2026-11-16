@@ -30,7 +30,9 @@ class _IntervalSheet extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.bgSurfaceRaised,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusL)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusL),
+        ),
       ),
       padding: EdgeInsets.only(
         left: AppTheme.screenPaddingH,
@@ -46,7 +48,10 @@ class _IntervalSheet extends StatelessWidget {
             child: Container(
               width: 36,
               height: 4,
-              decoration: BoxDecoration(color: AppColors.bgHairline, borderRadius: BorderRadius.circular(AppTheme.radiusS)),
+              decoration: BoxDecoration(
+                color: AppColors.bgHairline,
+                borderRadius: BorderRadius.circular(AppTheme.radiusS),
+              ),
             ),
           ),
           const SizedBox(height: AppTheme.spaceL),
@@ -62,7 +67,8 @@ class _IntervalSheet extends StatelessWidget {
                 PressableScale(
                   onTap: () => Navigator.of(context).pop(minutes),
                   hapticOnTap: true,
-                  semanticLabel: '$minutes minutes${selected ? ', selected' : ''}',
+                  semanticLabel:
+                      '$minutes minutes${selected ? ', selected' : ''}',
                   child: Container(
                     height: AppTheme.minTapTarget,
                     alignment: Alignment.center,
@@ -71,15 +77,25 @@ class _IntervalSheet extends StatelessWidget {
                         Expanded(
                           child: Text(
                             'Every $minutes minutes',
-                            style: AppTypography.bodyL(color: selected ? AppColors.textPrimary : AppColors.textSecondary),
+                            style: AppTypography.bodyL(
+                              color: selected
+                                  ? AppColors.textPrimary
+                                  : AppColors.textSecondary,
+                            ),
                           ),
                         ),
-                        if (selected) const Icon(AppIcons.check, size: AppTheme.iconM, color: AppColors.gold),
+                        if (selected)
+                          const Icon(
+                            AppIcons.check,
+                            size: AppTheme.iconM,
+                            color: AppColors.gold,
+                          ),
                       ],
                     ),
                   ),
                 ),
-                if (i != kIntervalOptions.length - 1) const Divider(height: 1, color: AppColors.bgHairline),
+                if (i != kIntervalOptions.length - 1)
+                  const Divider(height: 1, color: AppColors.bgHairline),
               ],
             );
           }),

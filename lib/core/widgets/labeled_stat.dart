@@ -6,7 +6,13 @@ import '../constants/app_typography.dart';
 /// used in session summaries and dashboards. Built once so every stat in
 /// the app lines up the same way instead of being re-laid-out per screen.
 class LabeledStat extends StatelessWidget {
-  const LabeledStat({super.key, required this.label, required this.value, this.alignEnd = false, this.valueStyle});
+  const LabeledStat({
+    super.key,
+    required this.label,
+    required this.value,
+    this.alignEnd = false,
+    this.valueStyle,
+  });
 
   final String label;
   final String value;
@@ -20,7 +26,9 @@ class LabeledStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Text(label.toUpperCase(), style: AppTypography.labelS()),
         const SizedBox(height: AppTheme.spaceHairline),

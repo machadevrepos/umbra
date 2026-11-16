@@ -1,18 +1,158 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import '../models/hydration_mode.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/session_record.dart';
+import '../models/hydration_mode.dart';
+import '../ble/band_protocol.dart';
+import '../ble/band_database.dart';
 
 /// Shared session history: Home reads the most recent entry for its "Last
 /// night" card, Active Session writes a new entry when a session ends, and
 /// History/Insights (once built) read the full list. One store instead of
 /// each screen re-deriving its own copy of "what happened."
 ///
-/// In-memory only for now. Swaps for a local database (sqflite/drift) once
-/// persistence matters, the read/write shape here shouldn't need to change.
+/// History and ratings are stored locally and originate from a connected band.
 class SessionStore extends ChangeNotifier {
   SessionStore() {
-    _seedMockHistory();
+    ready = _load();
   }
+
+  late final Future<void> ready;
+  Future<void> _writes = Future.value();
+  bool _disposed = false;
+  String? storageError;
+  static const _key = 'session_history_v1';
+  final BandDatabase bandDatabase = BandDatabase();
+
+  Future<void> _load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final entry in prefs.getStringList(_key) ?? <String>[]) {
+        try {
+          final record = SessionRecord.fromJson(
+            jsonDecode(entry) as Map<String, dynamic>,
+          );
+          if (record.deviceId != null &&
+              !_history.any((s) => s.id == record.id)) {
+            _history.add(record);
+          }
+        } catch (_) {
+          storageError = 'Some saved nights could not be loaded.';
+        }
+      }
+      await bandDatabase.migrateLegacyLogs();
+      _history.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    } catch (_) {
+      storageError = 'Saved nights could not be loaded.';
+    }
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> _save() {
+    final snapshot = _history.map((s) => jsonEncode(s.toJson())).toList();
+    _writes = _writes.then((_) async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (!await prefs.setStringList(_key, snapshot)) {
+          throw StateError('Storage unavailable');
+        }
+        storageError = null;
+      } catch (_) {
+        storageError =
+            'This change could not be saved. Keep the app open and try again.';
+        if (!_disposed) notifyListeners();
+      }
+    });
+    return _writes;
+  }
+
+  Future<int> logCursor(String deviceId) async {
+    await ready;
+    return bandDatabase.cursor(deviceId);
+  }
+
+  Future<void> importBandLog(
+    String deviceId,
+    List<BandLogRecord> batch,
+    int next, {
+    required bool currentlyNight,
+  }) async {
+    await ready;
+    await bandDatabase.saveLog(deviceId, batch, next);
+    final ordered = await bandDatabase.logs(deviceId);
+    final group = <BandLogRecord>[];
+    void finish() {
+      if (group.isEmpty) return;
+      final start = group.first.startedAt;
+      final end = group.last.endedAt;
+      final withHr = group
+          .where((r) => r.hrAvg > 0 && r.durationSeconds > 0)
+          .toList();
+      final oxygen = group.where((r) => r.spo2 > 0).toList();
+      final matching = _history
+          .where(
+            (r) =>
+                r.deviceId == deviceId &&
+                !r.endedAt.isBefore(start) &&
+                !r.startedAt.isAfter(end),
+          )
+          .toList();
+      final rated = matching.where((r) => r.checkInRating != null).toList();
+      _history.removeWhere((r) => matching.contains(r));
+      _history.add(
+        SessionRecord(
+          id: 'band:$deviceId:${group.first.boot}:${group.first.seq}',
+          deviceId: deviceId,
+          mode: HydrationMode.night,
+          startedAt: start,
+          endedAt: end,
+          avgHr: withHr.isEmpty
+              ? null
+              : (withHr.fold<int>(
+                          0,
+                          (sum, r) => sum + r.hrAvg * r.durationSeconds,
+                        ) /
+                        withHr.fold<int>(
+                          0,
+                          (sum, r) => sum + r.durationSeconds,
+                        ))
+                    .round(),
+          avgHrv: null,
+          avgSpo2: oxygen.isEmpty
+              ? null
+              : (oxygen.fold<int>(0, (sum, r) => sum + r.spo2) / oxygen.length)
+                    .round(),
+          motion: 'Not provided by band',
+          reminderCount: null,
+          steps: group.every((r) => r.stepsValid)
+              ? group.fold<int>(0, (sum, r) => sum + r.steps)
+              : null,
+          checkInRating: rated.isEmpty ? null : rated.first.checkInRating,
+        ),
+      );
+      group.clear();
+    }
+
+    BandLogRecord? previous;
+    for (final record in ordered) {
+      if (previous != null &&
+          (record.boot != previous.boot || record.seq != previous.seq + 1)) {
+        finish();
+      }
+      if (record.timeIsUtc && record.night && record.durationSeconds > 0) {
+        group.add(record);
+      } else {
+        finish();
+      }
+      previous = record;
+    }
+    if (!currentlyNight) finish();
+    _history.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    if (!_disposed) notifyListeners();
+    await _save();
+  }
+
+  Future<void> flush() => _writes;
 
   final List<SessionRecord> _history = [];
 
@@ -21,64 +161,27 @@ class SessionStore extends ChangeNotifier {
 
   SessionRecord? get mostRecent => _history.isEmpty ? null : _history.first;
 
-  void addSession(SessionRecord record) {
+  Future<void> addSession(SessionRecord record) async {
+    await ready;
+    _history.removeWhere((s) => s.id == record.id);
     _history.insert(0, record);
     notifyListeners();
+    await _save();
   }
 
-  void attachCheckIn(String sessionId, int rating) {
+  Future<void> attachCheckIn(String sessionId, int rating) async {
+    if (rating < 1 || rating > 10) throw RangeError.range(rating, 1, 10);
+    await ready;
     final index = _history.indexWhere((s) => s.id == sessionId);
     if (index == -1) return;
     _history[index] = _history[index].copyWith(checkInRating: rating);
     notifyListeners();
+    await _save();
   }
 
-  // Two weeks of representative nights so History reads as a real list and
-  // Insights has enough rated sessions to show an actual pattern rather
-  // than an empty state. `seed-1` (yesterday, unrated) is kept exactly as
-  // it was: it's what the check-in flow tests exercise.
-  void _seedMockHistory() {
-    SessionRecord night({
-      required String id,
-      required int daysAgo,
-      required int startHour,
-      required int startMinute,
-      required Duration duration,
-      required int avgHr,
-      required int avgHrv,
-      required int avgSpo2,
-      required int reminderCount,
-      int? checkInRating,
-    }) {
-      final day = DateTime.now().subtract(Duration(days: daysAgo));
-      final start = DateTime(day.year, day.month, day.day, startHour, startMinute);
-      return SessionRecord(
-        id: id,
-        mode: HydrationMode.night,
-        startedAt: start,
-        endedAt: start.add(duration),
-        avgHr: avgHr,
-        avgHrv: avgHrv,
-        avgSpo2: avgSpo2,
-        // Every seeded night here is Night Mode, out and about, so a single
-        // fixed label is honest rather than a per-call param for a value
-        // that never actually varies among these seeds.
-        motion: 'Active',
-        reminderCount: reminderCount,
-        checkInRating: checkInRating,
-      );
-    }
-
-    _history.addAll([
-      night(id: 'seed-1', daysAgo: 1, startHour: 23, startMinute: 42, duration: const Duration(hours: 2, minutes: 33), avgHr: 88, avgHrv: 52, avgSpo2: 97, reminderCount: 3),
-      night(id: 'seed-2', daysAgo: 2, startHour: 22, startMinute: 50, duration: const Duration(hours: 1, minutes: 45), avgHr: 84, avgHrv: 56, avgSpo2: 98, reminderCount: 3, checkInRating: 8),
-      night(id: 'seed-3', daysAgo: 3, startHour: 23, startMinute: 10, duration: const Duration(hours: 2, minutes: 40), avgHr: 95, avgHrv: 44, avgSpo2: 96, reminderCount: 2, checkInRating: 5),
-      night(id: 'seed-4', daysAgo: 4, startHour: 22, startMinute: 30, duration: const Duration(hours: 1, minutes: 50), avgHr: 82, avgHrv: 59, avgSpo2: 98, reminderCount: 4, checkInRating: 8),
-      night(id: 'seed-5', daysAgo: 5, startHour: 23, startMinute: 0, duration: const Duration(hours: 2, minutes: 15), avgHr: 90, avgHrv: 49, avgSpo2: 97, reminderCount: 3, checkInRating: 6),
-      night(id: 'seed-6', daysAgo: 6, startHour: 22, startMinute: 40, duration: const Duration(hours: 1, minutes: 20), avgHr: 79, avgHrv: 61, avgSpo2: 98, reminderCount: 2, checkInRating: 8),
-      night(id: 'seed-7', daysAgo: 7, startHour: 23, startMinute: 20, duration: const Duration(hours: 3, minutes: 10), avgHr: 97, avgHrv: 42, avgSpo2: 95, reminderCount: 4, checkInRating: 4),
-      night(id: 'seed-8', daysAgo: 8, startHour: 22, startMinute: 55, duration: const Duration(hours: 1, minutes: 55), avgHr: 86, avgHrv: 54, avgSpo2: 97, reminderCount: 3, checkInRating: 7),
-      night(id: 'seed-9', daysAgo: 9, startHour: 23, startMinute: 5, duration: const Duration(hours: 2, minutes: 50), avgHr: 93, avgHrv: 46, avgSpo2: 96, reminderCount: 5, checkInRating: 5),
-    ]);
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

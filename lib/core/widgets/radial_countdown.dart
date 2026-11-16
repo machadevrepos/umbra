@@ -35,8 +35,15 @@ class RadialCountdown extends StatelessWidget {
       builder: (context, value, _) {
         return CustomPaint(
           size: Size.square(size),
-          painter: _RingPainter(progress: value.clamp(0.0, 1.0), strokeWidth: strokeWidth),
-          child: SizedBox(width: size, height: size, child: Center(child: child)),
+          painter: _RingPainter(
+            progress: value.clamp(0.0, 1.0),
+            strokeWidth: strokeWidth,
+          ),
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Center(child: child),
+          ),
         );
       },
     );
@@ -68,9 +75,16 @@ class _RingPainter extends CustomPainter {
 
     const start = -math.pi / 2;
     final sweep = progress * 2 * math.pi;
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start, sweep, false, arc);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      start,
+      sweep,
+      false,
+      arc,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _RingPainter oldDelegate) => oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _RingPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

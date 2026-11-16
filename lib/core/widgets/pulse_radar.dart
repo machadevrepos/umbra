@@ -27,15 +27,23 @@ class PulseRadar extends StatefulWidget {
   State<PulseRadar> createState() => _PulseRadarState();
 }
 
-class _PulseRadarState extends State<PulseRadar> with SingleTickerProviderStateMixin {
+class _PulseRadarState extends State<PulseRadar>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final bool _reduceMotion;
 
   @override
   void initState() {
     super.initState();
-    _reduceMotion = WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations;
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400));
+    _reduceMotion = WidgetsBinding
+        .instance
+        .platformDispatcher
+        .accessibilityFeatures
+        .disableAnimations;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    );
     if (!_reduceMotion) _controller.repeat();
   }
 
@@ -57,7 +65,10 @@ class _PulseRadarState extends State<PulseRadar> with SingleTickerProviderStateM
             Container(
               width: widget.size * 0.6,
               height: widget.size * 0.6,
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: widget.color.withValues(alpha: 0.3))),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: widget.color.withValues(alpha: 0.3)),
+              ),
             )
           else
             AnimatedBuilder(
@@ -66,7 +77,8 @@ class _PulseRadarState extends State<PulseRadar> with SingleTickerProviderStateM
                 return Stack(
                   alignment: Alignment.center,
                   children: List.generate(widget.ringCount, (i) {
-                    final phase = (_controller.value + (i / widget.ringCount)) % 1.0;
+                    final phase =
+                        (_controller.value + (i / widget.ringCount)) % 1.0;
                     final scale = 0.3 + (phase * 0.7);
                     final opacity = (1.0 - phase).clamp(0.0, 1.0);
                     return Opacity(
@@ -76,7 +88,10 @@ class _PulseRadarState extends State<PulseRadar> with SingleTickerProviderStateM
                         child: Container(
                           width: widget.size,
                           height: widget.size,
-                          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: widget.color, width: 1.5)),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: widget.color, width: 1.5),
+                          ),
                         ),
                       ),
                     );

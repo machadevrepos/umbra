@@ -69,7 +69,11 @@ ThemeData buildUmbraTheme() {
       outline: AppColors.bgHairline,
     ),
     dividerColor: AppColors.bgHairline,
-    dividerTheme: const DividerThemeData(color: AppColors.bgHairline, thickness: 1, space: 1),
+    dividerTheme: const DividerThemeData(
+      color: AppColors.bgHairline,
+      thickness: 1,
+      space: 1,
+    ),
     // Tactile feedback comes from PressableScale, not Material ink. A
     // ripple on top of our own press-scale would be a second, competing
     // feedback system on every tap.
@@ -81,7 +85,9 @@ ThemeData buildUmbraTheme() {
         // Only iOS gets the edge-swipe-back gesture: see the class doc on
         // UmbraPageTransitionsBuilder for why Android deliberately keeps
         // Flutter's own predictive-back builder instead of our custom one.
-        TargetPlatform.iOS: UmbraPageTransitionsBuilder(enableEdgeSwipeBack: true),
+        TargetPlatform.iOS: UmbraPageTransitionsBuilder(
+          enableEdgeSwipeBack: true,
+        ),
         TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
         TargetPlatform.macOS: UmbraPageTransitionsBuilder(),
         TargetPlatform.windows: UmbraPageTransitionsBuilder(),
@@ -100,4 +106,3 @@ ThemeData buildUmbraTheme() {
     ),
   );
 }
-

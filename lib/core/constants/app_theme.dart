@@ -48,8 +48,8 @@ class AppTheme {
   ];
 
   static List<BoxShadow> goldGlow({double blur = 20}) => [
-        BoxShadow(color: AppColors.goldGlow, blurRadius: blur, spreadRadius: 1),
-      ];
+    BoxShadow(color: AppColors.goldGlow, blurRadius: blur, spreadRadius: 1),
+  ];
 
   /// Minimum tap target per accessibility rule, pad, don't grow the icon.
   static const double minTapTarget = 44;

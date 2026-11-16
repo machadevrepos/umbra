@@ -29,16 +29,15 @@ band/PCB/enclosure, not for the app we're building here).
 
 | Mode | Default interval | Adjustable options |
 |---|---|---|
-| Night Mode (active while drinking) | **40 min** | 20 / 30 / 45 / 60 min |
+| Night Mode (active while drinking) | **Read from band (firmware default 35 min)** | 20 / 30 / 45 / 60 min |
 | Daily Mode (passive all-day hydration) | **90 min** | 20 / 30 / 45 / 60 min |
 
 Note: the client's original doc said Night default 40 min with 20/30/40/60
 options; a later "few key reminders" follow-up changed this to 35 min
 default with 20/30/45/60 options; then Brad's build-107 TestFlight review
 (2026-09-07) asked for the default back to 40 min for the beta, keeping
-the 20/30/45/60 options from the second message. Treat this as the current
-authoritative combination — 40 min default, 20/30/45/60 options — unless
-a later message supersedes it again.
+the 20/30/45/60 options from the second message. This was the beta
+combination — 40 min default, 20/30/45/60 options — The supplied firmware now defaults to 35 minutes; the app reads the band rather than overriding it.
 
 Haptic pattern: **double tap, two short, firm pulses**, strong enough to
 feel clearly in a loud bar or festival environment. This is a firmware/
@@ -136,80 +135,80 @@ constitution already fits the brief.
   yet, `CLAUDE.md` says to document that decision here once made. Nothing
   to record yet; `lib/` is still the default `flutter create` scaffold.
 
-## BLE integration, decided
+## Hardware integration (current firmware)
 
-`flutter_reactive_ble` (BSD, free for commercial use), not
-`flutter_blue_plus`: the latter changed its license to require a paid
-commercial tier for any for-profit use, including development and
-testing, which applies to Umbra. See `lib/core/state/band_controller.dart`
-and `lib/core/ble/`.
+The user supplied `E:/Smart_hydration_Band.zip`. The source contract is copied
+verbatim to `docs/firmware-ble-interface.md` and checked against
+`Firmware/src/ble_service.c` and `Firmware/include/app_config.h`.
+The firmware source itself is not modified by this app change.
 
-- `BandController` owns the real link end to end: scan, connect,
-  reconnect-with-backoff on an unexpected drop, and persisting the last
-  paired device (`shared_preferences`, via `band_storage.dart`) so the app
-  reconnects on its own the next time it's opened, without the user
-  re-pairing.
-- No real firmware exists yet, so `band_ble_constants.dart` defaults to
-  the Nordic UART Service UUIDs (the standard choice for an ESP32
-  prototype streaming JSON text over BLE notify) and scans by advertised
-  name prefix rather than service UUID. Both are isolated to that one
-  file, swapping in the real firmware's UUIDs later is a one-file change.
-- Telemetry is parsed against the feasibility report's example JSON shape
-  (`device_id`, `heart_rate`, `spo2`, `battery`, `session_active`), with
-  `gsr` never read, per the v1 scope decision above.
-- Every BLE/permission entry point is wrapped so a platform error changes
-  state instead of throwing: Bluetooth off, permission denied, the band
-  itself powering off mid-session, or no BLE plugin available at all (as
-  in a widget test) all become a visible app state, never a crash. This
-  matches the standalone-band requirement above: losing the link can't
-  take the app down or block the band's own reminders.
+The app uses `flutter_reactive_ble` and the firmware's standard Heart Rate,
+Battery, Device Information, and custom Umbra binary GATT characteristics.
+The advertised name prefix is `umbra`. There is no bonding. The old UART JSON
+reader and its provisional sensor fields have been removed.
 
-### Device status, available app-wide
+- Time is written on each connection and on returning to the app.
+- Mode is read/subscribed and confirmed by hardware before changing the UI.
+  The physical button can change the app's mode and session state too.
+- Intervals are read from the band. Changing one reads both, preserves the
+  other, writes the two uint16 little-endian values, then reads them back.
+  The current firmware defaults to Daily 90 and Night 35 minutes. These
+  device values supersede the former beta app default of 40 in the UI.
+- Heart rate comes from 0x2A37. Zero or about 3 seconds without a notification
+  becomes no reading immediately. There is no simulated fallback.
+- Steps come from the band's uint32 since-power-on counter and appear on Home
+  and Band Detail. Each received counter is saved with its device ID and receipt
+  time in SQLite (`umbra_band.db`). Daily and Night log records, including step
+  deltas and their validity flags, are saved in the same database. Log records
+  and their sync cursor commit in one transaction; old preference logs migrate
+  on startup. Session details show summed valid log steps, or observed live
+  counter deltas until a hardware sync replaces them. Resets/disconnections
+  leave uncertain session totals unavailable rather than inventing steps.
+- Connection-time reads cannot overwrite newer notifications or update a
+  forgotten/disconnected band. Sudden battery drops over 20 percentage points
+  within a minute require a fresh Battery Level read before changing the display.
+  A confirmed zero remains valid; failed verification keeps the last confirmed
+  value with an explanation. Battery is also refreshed every 30 seconds.
+- SpO2 is a spot check with status, quality, and a last-valid timestamp.
+  The app can request measurement with byte 1 and displays failed-attempt
+  reasons while retaining the last reading with its age. Session averages
+  count new measurements rather than every repeated status notification.
+- The vibration test writes byte 1 to the Haptic characteristic. It never
+  substitutes a phone vibration for a successful band command.
+- History sync subscribes before requesting records, validates sequence
+  continuity, supports 16/20-byte records, persists raw records and the next
+  cursor together after the end marker, and deduplicates by device/sequence.
+  Untimed boot records remain stored without invented calendar dates.
+- Night history is reconstructed from consecutive Night records, with ratings
+  preserved across repeated syncs. A connected mode transition can also save
+  an observed session; later hardware logs replace overlapping observations.
+- Offline users can view saved history and settings, but cannot start a new
+  session, change band mode/intervals, or send commands.
 
-`BandController` is registered once, at the `MultiProvider` root in
-`main.dart`, the same tier as `SessionController`/`SessionStore`/
-`SettingsController`. Any screen or future controller reads it the same
-way, `context.watch<BandController>()` to rebuild on change or
-`context.read<BandController>()` for a one-off action, no per-screen
-wiring needed. This is the one source of truth for hardware/connection
-state, nothing else in the app should track a second copy of it.
+HRV, motion classification, reminder counts, and the next-reminder timestamp
+are absent from this firmware's public contract. The app does not invent them
+or show a phone-generated countdown. The band owns autonomous reminders.
+There is no seeded production history and no production demo mode.
 
-Public contract other features can rely on:
+Morning check-ins are one-off notifications targeted to local 9am following
+an actual completed hardware session. They open the matching rating screen,
+are cancelled after rating or disabling, and do not re-prompt a missed night.
+Android uses inexact scheduling without special alarm access, so the OS can
+delay delivery. Android reboot/update receivers restore pending schedules.
+History, ratings, actual-session observations, and preferences persist locally.
 
-- `state` (`BandLinkState`): `idle` (never paired, or user forgot the
-  band) · `bluetoothUnavailable` · `permissionDenied` · `scanning` ·
-  `connecting` · `connected` · `reconnecting` (was connected, dropped,
-  retrying with backoff, the band itself keeps buzzing regardless).
-- `connected` (bool): shorthand for `state == BandLinkState.connected`.
-- `battery`, `restingHr` (int): most recent readings. Hold their last
-  known value after a disconnect, they don't reset to 0, check
-  `lastSeenAt`/`readingsAreStale` before treating them as current.
-- `deviceName` (String): the paired band's advertised name, falls back to
-  a generic "Umbra band" label.
-- `lastSeenAt` (DateTime?): when a reading last actually arrived, `null`
-  if the app has never connected to a band this install.
-- `readingsAreStale` (bool): true when not connected but a previous
-  reading exists, the signal to show cached data as cached rather than
-  live.
-- `scanResults` (`List<BandScanMatch>`): live candidates during
-  `startScan()`, pairing-flow use only.
+Android permissions use Nearby Devices on Android 12+; older Android needs
+location permission and enabled Location services for scans. Permission
+failure leaves the app usable without pretending a band is connected.
 
-`BandStatusPresentation.of(state)` (`lib/core/utils/`) is the single
-place that turns a `BandLinkState` into a label/icon/color, Home's top
-bar, the band status card, and Band Detail all call it rather than each
-re-deciding what "reconnecting" looks like. Any new screen that shows
-band status should call it too instead of adding a fourth switch
-statement.
+Firmware handover note: `APP_SPO2_BENCH_MODE` is 1 in the supplied source.
+The firmware documentation says to set it to 0 for delivery; while enabled,
+SpO2 attempts run much more often and consume more battery. Calibration is
+also explicitly marked incomplete. This app does not silently change firmware
+or claim medical accuracy.
 
-Not wired up yet, deliberately: `SessionController`'s live HR/HRV during
-an active session are still the mock demo sequence, not real `heart_rate`
-telemetry from `BandController`. `heart_rate` is already a confirmed
-field and could be wired now; HRV isn't in the example payload at all
-(side_notes above: "derived from HR, no new sensor") so whether it
-arrives as a firmware-computed field or needs computing app-side from raw
-samples is still open. Don't wire one without the other without checking,
-that's a product decision (does a real session now show real HR, unblocked
-by an unrelated open question) more than a technical one.
+Apple Watch, Arabic localization, quiet-hours editing, and production signing
+remain separate work. Hardware-in-the-loop validation requires a physical band.
 
 ## Timeline (for context, not a hard deadline the app has to hit)
 

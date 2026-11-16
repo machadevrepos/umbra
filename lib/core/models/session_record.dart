@@ -23,18 +23,58 @@ class SessionRecord {
     required this.motion,
     required this.reminderCount,
     this.checkInRating,
+    this.deviceId,
+    this.steps,
   });
 
   final String id;
   final HydrationMode mode;
   final DateTime startedAt;
   final DateTime endedAt;
-  final int avgHr;
-  final int avgHrv;
-  final int avgSpo2;
+  final int? avgHr;
+  final int? avgHrv;
+  final int? avgSpo2;
   final String motion;
-  final int reminderCount;
+  final int? reminderCount;
+  final String? deviceId;
   final int? checkInRating;
+  final int? steps;
+
+  String get stepsLabel => steps == null ? 'No data' : '$steps';
+
+  String get avgHrLabel => avgHr == null ? 'No data' : '$avgHr bpm';
+  String get avgHrvLabel => avgHrv == null ? 'No data' : '$avgHrv ms';
+  String get avgSpo2Label => avgSpo2 == null ? 'No data' : '$avgSpo2%';
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'mode': mode.name,
+    'startedAt': startedAt.toUtc().toIso8601String(),
+    'endedAt': endedAt.toUtc().toIso8601String(),
+    'avgHr': avgHr,
+    'avgHrv': avgHrv,
+    'avgSpo2': avgSpo2,
+    'motion': motion,
+    'reminderCount': reminderCount,
+    'checkInRating': checkInRating,
+    'deviceId': deviceId,
+    'steps': steps,
+  };
+
+  factory SessionRecord.fromJson(Map<String, dynamic> json) => SessionRecord(
+    id: json['id'] as String,
+    mode: HydrationMode.values.byName(json['mode'] as String),
+    startedAt: DateTime.parse(json['startedAt'] as String).toLocal(),
+    endedAt: DateTime.parse(json['endedAt'] as String).toLocal(),
+    avgHr: json['avgHr'] as int?,
+    avgHrv: json['avgHrv'] as int?,
+    avgSpo2: json['avgSpo2'] as int?,
+    motion: json['motion'] as String,
+    reminderCount: json['reminderCount'] as int?,
+    checkInRating: json['checkInRating'] as int?,
+    deviceId: json['deviceId'] as String?,
+    steps: json['steps'] as int?,
+  );
 
   Duration get duration => endedAt.difference(startedAt);
 
@@ -57,6 +97,8 @@ class SessionRecord {
       motion: motion,
       reminderCount: reminderCount,
       checkInRating: checkInRating ?? this.checkInRating,
+      deviceId: deviceId,
+      steps: steps,
     );
   }
 }

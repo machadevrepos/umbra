@@ -6,6 +6,8 @@ import '../../core/constants/app_icons.dart';
 import '../../core/constants/app_theme.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/state/settings_controller.dart';
+import '../../core/state/morning_checkin_controller.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../core/utils/navigation.dart';
 import '../../core/widgets/app_switch.dart';
 import '../../core/widgets/pressable_scale.dart';
@@ -17,6 +19,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsController>();
+    final checkins = context.watch<MorningCheckinController>();
 
     return SafeArea(
       bottom: false,
@@ -38,8 +41,10 @@ class SettingsScreen extends StatelessWidget {
                 title: 'Morning check-in',
                 subtitle: 'The single 9am prompt to rate how you feel.',
                 trailing: AppSwitch(
-                  value: settings.notificationsEnabled,
-                  onChanged: settings.setNotificationsEnabled,
+                  value: checkins.enabled,
+                  onChanged: (value) {
+                    if (!checkins.busy) checkins.setEnabled(value);
+                  },
                   semanticLabel: 'Morning check-in notification',
                 ),
               ),
@@ -54,6 +59,24 @@ class SettingsScreen extends StatelessWidget {
               ),
             ],
           ),
+          if (checkins.error != null) ...[
+            const SizedBox(height: AppTheme.spaceM),
+            Text(
+              checkins.error!,
+              style: AppTypography.bodyS(color: AppColors.textSecondary),
+            ),
+            PressableScale(
+              onTap: openAppSettings,
+              semanticLabel: 'Open notification settings',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppTheme.spaceM),
+                child: Text(
+                  'Open phone settings',
+                  style: AppTypography.labelL(),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: AppTheme.spaceXxxl),
           Text('DEVICE', style: AppTypography.labelS()),
           const SizedBox(height: AppTheme.spaceM),
@@ -62,7 +85,11 @@ class SettingsScreen extends StatelessWidget {
               _SettingsRow(
                 title: 'Manage band',
                 subtitle: 'Connection, battery, and pairing.',
-                trailing: const Icon(AppIcons.chevronForward, size: AppTheme.iconS, color: AppColors.textMuted),
+                trailing: const Icon(
+                  AppIcons.chevronForward,
+                  size: AppTheme.iconS,
+                  color: AppColors.textMuted,
+                ),
                 onTap: () => pushOnce(context, (_) => const BandDetailScreen()),
               ),
             ],
@@ -72,7 +99,10 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: AppTheme.spaceM),
           _SettingsGroup(
             children: [
-              _SettingsRow(title: 'Version', trailing: const _AppVersionLabel()),
+              _SettingsRow(
+                title: 'Version',
+                trailing: const _AppVersionLabel(),
+              ),
             ],
           ),
         ],
@@ -88,12 +118,16 @@ class _SettingsGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: AppColors.bgSurface, borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+      ),
       child: Column(
         children: [
           for (var i = 0; i < children.length; i++) ...[
             children[i],
-            if (i != children.length - 1) const Divider(height: 1, color: AppColors.bgHairline),
+            if (i != children.length - 1)
+              const Divider(height: 1, color: AppColors.bgHairline),
           ],
         ],
       ),
@@ -110,7 +144,9 @@ class _AppVersionLabel extends StatelessWidget {
       future: PackageInfo.fromPlatform(),
       builder: (context, snapshot) {
         final info = snapshot.data;
-        final label = info == null ? '' : '${info.version} (${info.buildNumber})';
+        final label = info == null
+            ? ''
+            : '${info.version} (${info.buildNumber})';
         return Text(label, style: AppTypography.bodyM());
       },
     );
@@ -118,7 +154,12 @@ class _AppVersionLabel extends StatelessWidget {
 }
 
 class _SettingsRow extends StatelessWidget {
-  const _SettingsRow({required this.title, this.subtitle, required this.trailing, this.onTap});
+  const _SettingsRow({
+    required this.title,
+    this.subtitle,
+    required this.trailing,
+    this.onTap,
+  });
 
   final String title;
   final String? subtitle;
@@ -128,7 +169,10 @@ class _SettingsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceL, vertical: AppTheme.spaceM),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spaceL,
+        vertical: AppTheme.spaceM,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -138,7 +182,12 @@ class _SettingsRow extends StatelessWidget {
                 Text(title, style: AppTypography.bodyL()),
                 if (subtitle != null) ...[
                   const SizedBox(height: AppTheme.spaceHairline),
-                  Text(subtitle!, style: AppTypography.bodyS(), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(
+                    subtitle!,
+                    style: AppTypography.bodyS(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ],
             ),

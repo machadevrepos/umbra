@@ -21,13 +21,20 @@ class SessionDetailScreen extends StatelessWidget {
 
   final String sessionId;
 
-  Future<void> _rate(BuildContext context, String durationLabel, int reminderCount) async {
+  Future<void> _rate(
+    BuildContext context,
+    String durationLabel,
+    int? reminderCount,
+  ) async {
     final rating = await pushOnce<int>(
       context,
-      (_) => MorningCheckinScreen(sessionSummary: 'Last night: Night session, $durationLabel, $reminderCount reminders'),
+      (_) => MorningCheckinScreen(
+        sessionSummary:
+            'Last night: Night session, $durationLabel, recorded by your band',
+      ),
     );
     if (rating != null && context.mounted) {
-      context.read<SessionStore>().attachCheckIn(sessionId, rating);
+      await context.read<SessionStore>().attachCheckIn(sessionId, rating);
     }
   }
 
@@ -49,7 +56,9 @@ class SessionDetailScreen extends StatelessWidget {
       backgroundColor: AppColors.bgVoid,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppTheme.screenPaddingH),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppTheme.screenPaddingH,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -61,15 +70,26 @@ class SessionDetailScreen extends StatelessWidget {
                   width: AppTheme.minTapTarget,
                   height: AppTheme.minTapTarget,
                   alignment: Alignment.centerLeft,
-                  child: const Icon(AppIcons.chevronBack, size: AppTheme.iconL, color: AppColors.textSecondary),
+                  child: const Icon(
+                    AppIcons.chevronBack,
+                    size: AppTheme.iconL,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
               const SizedBox(height: AppTheme.spaceL),
               Row(
                 children: [
-                  Icon(isNight ? AppIcons.moon : AppIcons.sun, size: AppTheme.iconL, color: AppColors.gold),
+                  Icon(
+                    isNight ? AppIcons.moon : AppIcons.sun,
+                    size: AppTheme.iconL,
+                    color: AppColors.gold,
+                  ),
                   const SizedBox(width: AppTheme.spaceM),
-                  Text(isNight ? 'Night session' : 'Daily tracking', style: AppTypography.titleL()),
+                  Text(
+                    isNight ? 'Night session' : 'Daily tracking',
+                    style: AppTypography.titleL(),
+                  ),
                 ],
               ),
               const SizedBox(height: AppTheme.spaceS),
@@ -80,24 +100,66 @@ class SessionDetailScreen extends StatelessWidget {
               const SizedBox(height: AppTheme.spaceXxxl),
               Container(
                 padding: const EdgeInsets.all(AppTheme.spaceL),
-                decoration: BoxDecoration(color: AppColors.bgSurface, borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+                decoration: BoxDecoration(
+                  color: AppColors.bgSurface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                ),
                 child: Row(
                   children: [
-                    Expanded(child: LabeledStat(label: 'Avg HR', value: '${session.avgHr} bpm', valueStyle: AppTypography.titleM())),
-                    Expanded(child: LabeledStat(label: 'Duration', value: session.durationLabel, valueStyle: AppTypography.titleM())),
-                    Expanded(child: LabeledStat(label: 'Reminders', value: '${session.reminderCount}', valueStyle: AppTypography.titleM())),
+                    Expanded(
+                      child: LabeledStat(
+                        label: 'Avg HR',
+                        value: session.avgHrLabel,
+                        valueStyle: AppTypography.titleM(),
+                      ),
+                    ),
+                    Expanded(
+                      child: LabeledStat(
+                        label: 'Duration',
+                        value: session.durationLabel,
+                        valueStyle: AppTypography.titleM(),
+                      ),
+                    ),
+                    Expanded(
+                      child: LabeledStat(
+                        label: 'Source',
+                        value: 'Band',
+                        valueStyle: AppTypography.titleM(),
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: AppTheme.spaceM),
               Container(
                 padding: const EdgeInsets.all(AppTheme.spaceL),
-                decoration: BoxDecoration(color: AppColors.bgSurface, borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+                decoration: BoxDecoration(
+                  color: AppColors.bgSurface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                ),
                 child: Row(
                   children: [
-                    Expanded(child: LabeledStat(label: 'Avg HRV', value: '${session.avgHrv} ms', valueStyle: AppTypography.titleM())),
-                    Expanded(child: LabeledStat(label: 'Avg SpO2', value: '${session.avgSpo2}%', valueStyle: AppTypography.titleM())),
-                    Expanded(child: LabeledStat(label: 'Motion', value: session.motion, valueStyle: AppTypography.titleM())),
+                    Expanded(
+                      child: LabeledStat(
+                        label: 'Steps',
+                        value: session.stepsLabel,
+                        valueStyle: AppTypography.titleM(),
+                      ),
+                    ),
+                    Expanded(
+                      child: LabeledStat(
+                        label: 'Avg SpO2',
+                        value: session.avgSpo2Label,
+                        valueStyle: AppTypography.titleM(),
+                      ),
+                    ),
+                    Expanded(
+                      child: LabeledStat(
+                        label: 'Source',
+                        value: 'Band',
+                        valueStyle: AppTypography.titleM(),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -107,12 +169,22 @@ class SessionDetailScreen extends StatelessWidget {
               if (session.checkInRating != null)
                 Container(
                   padding: const EdgeInsets.all(AppTheme.spaceL),
-                  decoration: BoxDecoration(color: AppColors.bgSurface, borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+                  decoration: BoxDecoration(
+                    color: AppColors.bgSurface,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  ),
                   child: Row(
                     children: [
-                      const Icon(AppIcons.sparkle, size: AppTheme.iconM, color: AppColors.gold),
+                      const Icon(
+                        AppIcons.sparkle,
+                        size: AppTheme.iconM,
+                        color: AppColors.gold,
+                      ),
                       const SizedBox(width: AppTheme.spaceM),
-                      Text('${session.checkInRating}/10', style: AppTypography.titleM()),
+                      Text(
+                        '${session.checkInRating}/10',
+                        style: AppTypography.titleM(),
+                      ),
                       const SizedBox(width: AppTheme.spaceS),
                       Text('felt that morning', style: AppTypography.bodyM()),
                     ],
@@ -122,7 +194,11 @@ class SessionDetailScreen extends StatelessWidget {
                 AppButton(
                   label: 'Rate this night',
                   variant: AppButtonVariant.secondary,
-                  onTap: () => _rate(context, session.durationLabel, session.reminderCount),
+                  onTap: () => _rate(
+                    context,
+                    session.durationLabel,
+                    session.reminderCount,
+                  ),
                 ),
               const SizedBox(height: AppTheme.spaceL),
             ],

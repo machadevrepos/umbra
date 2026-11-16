@@ -33,7 +33,8 @@ class AppIcons {
 
   // Status & metrics
   static const IconData droplet = Icons.water_drop_rounded;
-  static const IconData bluetooth = CupertinoIcons.antenna_radiowaves_left_right;
+  static const IconData bluetooth =
+      CupertinoIcons.antenna_radiowaves_left_right;
   static const IconData bluetoothOff = CupertinoIcons.wifi_slash;
   static const IconData batteryFull = CupertinoIcons.battery_100;
   static const IconData batteryLow = CupertinoIcons.battery_25;

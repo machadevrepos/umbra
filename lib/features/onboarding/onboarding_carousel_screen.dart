@@ -8,7 +8,11 @@ import 'permissions_screen.dart';
 import 'widgets/onboarding_background.dart';
 
 class _OnboardingPageData {
-  const _OnboardingPageData({required this.mood, required this.headline, required this.body});
+  const _OnboardingPageData({
+    required this.mood,
+    required this.headline,
+    required this.body,
+  });
   final OnboardingMood mood;
   final String headline;
   final String body;
@@ -18,12 +22,14 @@ const List<_OnboardingPageData> _kPages = [
   _OnboardingPageData(
     mood: OnboardingMood.calm,
     headline: 'Umbra reminds you to drink water.',
-    body: 'The band buzzes. You drink water. That\'s it. No logging, no tapping, no setup.',
+    body:
+        'The band buzzes. You drink water. That\'s it. No logging, no tapping, no setup.',
   ),
   _OnboardingPageData(
     mood: OnboardingMood.night,
     headline: 'Built for the night out.',
-    body: 'Night Mode buzzes every 40 minutes by default while you\'re out. Adjust it any time.',
+    body:
+        'Night Mode keeps reminders on your band while you\'re out. Adjust its interval when connected.',
   ),
   _OnboardingPageData(
     mood: OnboardingMood.morning,
@@ -36,7 +42,8 @@ class OnboardingCarouselScreen extends StatefulWidget {
   const OnboardingCarouselScreen({super.key});
 
   @override
-  State<OnboardingCarouselScreen> createState() => _OnboardingCarouselScreenState();
+  State<OnboardingCarouselScreen> createState() =>
+      _OnboardingCarouselScreenState();
 }
 
 class _OnboardingCarouselScreenState extends State<OnboardingCarouselScreen> {
@@ -50,11 +57,16 @@ class _OnboardingCarouselScreenState extends State<OnboardingCarouselScreen> {
       _finish();
       return;
     }
-    _pageController.nextPage(duration: AppTheme.animNormal, curve: AppTheme.motionCurve);
+    _pageController.nextPage(
+      duration: AppTheme.animNormal,
+      curve: AppTheme.motionCurve,
+    );
   }
 
   void _finish() {
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const PermissionsScreen()));
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const PermissionsScreen()),
+    );
   }
 
   @override
@@ -87,9 +99,16 @@ class _OnboardingCarouselScreenState extends State<OnboardingCarouselScreen> {
                   semanticLabel: 'Skip introduction',
                   child: Container(
                     height: AppTheme.minTapTarget,
-                    padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceM),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spaceM,
+                    ),
                     alignment: Alignment.center,
-                    child: Text('Skip', style: AppTypography.labelL(color: AppColors.textSecondary)),
+                    child: Text(
+                      'Skip',
+                      style: AppTypography.labelL(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -112,13 +131,18 @@ class _OnboardingCarouselScreenState extends State<OnboardingCarouselScreen> {
                         height: 6,
                         decoration: BoxDecoration(
                           color: active ? AppColors.gold : AppColors.bgHairline,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusPill,
+                          ),
                         ),
                       );
                     }),
                   ),
                   const SizedBox(height: AppTheme.spaceXl),
-                  AppButton(label: _isLastPage ? 'Get started' : 'Continue', onTap: _next),
+                  AppButton(
+                    label: _isLastPage ? 'Get started' : 'Continue',
+                    onTap: _next,
+                  ),
                 ],
               ),
             ),
@@ -147,7 +171,10 @@ class _OnboardingPage extends StatelessWidget {
             children: [
               Text(data.headline, style: AppTypography.titleL()),
               const SizedBox(height: AppTheme.spaceM),
-              Text(data.body, style: AppTypography.bodyL(color: AppColors.textSecondary)),
+              Text(
+                data.body,
+                style: AppTypography.bodyL(color: AppColors.textSecondary),
+              ),
             ],
           ),
         ),

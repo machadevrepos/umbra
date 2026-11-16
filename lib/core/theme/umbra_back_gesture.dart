@@ -17,16 +17,22 @@ import 'package:flutter/widgets.dart';
 /// driven directly by the finger; on release, it either flings the page
 /// closed (calling [route]'s pop) or snaps back open.
 class UmbraBackGestureDetector<T> extends StatefulWidget {
-  const UmbraBackGestureDetector({super.key, required this.route, required this.child});
+  const UmbraBackGestureDetector({
+    super.key,
+    required this.route,
+    required this.child,
+  });
 
   final PageRoute<T> route;
   final Widget child;
 
   @override
-  State<UmbraBackGestureDetector<T>> createState() => _UmbraBackGestureDetectorState<T>();
+  State<UmbraBackGestureDetector<T>> createState() =>
+      _UmbraBackGestureDetectorState<T>();
 }
 
-class _UmbraBackGestureDetectorState<T> extends State<UmbraBackGestureDetector<T>> {
+class _UmbraBackGestureDetectorState<T>
+    extends State<UmbraBackGestureDetector<T>> {
   static const double _edgeWidth = 20.0;
 
   _UmbraBackGestureController<T>? _controller;
@@ -65,11 +71,15 @@ class _UmbraBackGestureDetectorState<T> extends State<UmbraBackGestureDetector<T
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
-    _controller?.dragUpdate(_toLogical(details.primaryDelta! / context.size!.width));
+    _controller?.dragUpdate(
+      _toLogical(details.primaryDelta! / context.size!.width),
+    );
   }
 
   void _onDragEnd(DragEndDetails details) {
-    _controller?.dragEnd(_toLogical(details.velocity.pixelsPerSecond.dx / context.size!.width));
+    _controller?.dragEnd(
+      _toLogical(details.velocity.pixelsPerSecond.dx / context.size!.width),
+    );
     _controller = null;
   }
 
@@ -98,7 +108,10 @@ class _UmbraBackGestureDetectorState<T> extends State<UmbraBackGestureDetector<T
           width: max(dragAreaWidth, _edgeWidth),
           top: 0,
           bottom: 0,
-          child: Listener(onPointerDown: _onPointerDown, behavior: HitTestBehavior.translucent),
+          child: Listener(
+            onPointerDown: _onPointerDown,
+            behavior: HitTestBehavior.translucent,
+          ),
         ),
       ],
     );
@@ -110,7 +123,8 @@ class _UmbraBackGestureDetectorState<T> extends State<UmbraBackGestureDetector<T
 /// (fling velocity threshold, settle duration, settle curve) match
 /// Cupertino's own gesture controller.
 class _UmbraBackGestureController<T> {
-  _UmbraBackGestureController({required this.route}) : navigator = route.navigator! {
+  _UmbraBackGestureController({required this.route})
+    : navigator = route.navigator! {
     navigator.didStartUserGesture();
   }
 
@@ -151,7 +165,11 @@ class _UmbraBackGestureController<T> {
     } else {
       if (route.isCurrent) navigator.pop();
       if (controller.isAnimating) {
-        controller.animateBack(0.0, duration: _settleDuration, curve: _settleCurve);
+        controller.animateBack(
+          0.0,
+          duration: _settleDuration,
+          curve: _settleCurve,
+        );
       }
     }
 

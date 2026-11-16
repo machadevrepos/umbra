@@ -24,32 +24,53 @@ class HistoryRow extends StatelessWidget {
       semanticLabel: '$title, ${relativeDayLabel(session.startedAt)}',
       child: Container(
         padding: const EdgeInsets.all(AppTheme.spaceL),
-        decoration: BoxDecoration(color: AppColors.bgSurface, borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+        decoration: BoxDecoration(
+          color: AppColors.bgSurface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(isNight ? AppIcons.moon : AppIcons.sun, size: AppTheme.iconM, color: AppColors.textSecondary),
+                Icon(
+                  isNight ? AppIcons.moon : AppIcons.sun,
+                  size: AppTheme.iconM,
+                  color: AppColors.textSecondary,
+                ),
                 const SizedBox(width: AppTheme.spaceS),
                 Expanded(child: Text(title, style: AppTypography.titleS())),
-                Text(relativeDayLabel(session.startedAt), style: AppTypography.bodyS()),
+                Text(
+                  relativeDayLabel(session.startedAt),
+                  style: AppTypography.bodyS(),
+                ),
                 const SizedBox(width: AppTheme.spaceXs),
-                const Icon(AppIcons.chevronForward, size: AppTheme.iconS, color: AppColors.textMuted),
+                const Icon(
+                  AppIcons.chevronForward,
+                  size: AppTheme.iconS,
+                  color: AppColors.textMuted,
+                ),
               ],
             ),
             const SizedBox(height: AppTheme.spaceXs),
             Text(
-              '${session.avgHr} bpm avg · ${session.durationLabel} · ${session.reminderCount} reminders',
+              '${session.avgHrLabel} avg · ${session.durationLabel}',
               style: AppTypography.bodyS(color: AppColors.textSecondary),
             ),
             if (session.checkInRating != null) ...[
               const SizedBox(height: AppTheme.spaceXs),
               Row(
                 children: [
-                  const Icon(AppIcons.sparkle, size: AppTheme.iconS, color: AppColors.textMuted),
+                  const Icon(
+                    AppIcons.sparkle,
+                    size: AppTheme.iconS,
+                    color: AppColors.textMuted,
+                  ),
                   const SizedBox(width: AppTheme.spaceXs),
-                  Text('Felt ${session.checkInRating}/10', style: AppTypography.bodyS()),
+                  Text(
+                    'Felt ${session.checkInRating}/10',
+                    style: AppTypography.bodyS(),
+                  ),
                 ],
               ),
             ],

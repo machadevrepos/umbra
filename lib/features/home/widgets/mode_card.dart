@@ -22,11 +22,12 @@ class ModeCard extends StatelessWidget {
   final String label;
   final String descriptor;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final duration = reduceMotion ? Duration.zero : AppTheme.animFast;
 
     return PressableScale(
@@ -51,21 +52,39 @@ class ModeCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, size: AppTheme.iconL, color: selected ? AppColors.gold : AppColors.textSecondary),
+                Icon(
+                  icon,
+                  size: AppTheme.iconL,
+                  color: selected ? AppColors.gold : AppColors.textSecondary,
+                ),
                 AnimatedOpacity(
                   duration: duration,
                   opacity: selected ? 1 : 0,
                   child: Container(
                     width: 18,
                     height: 18,
-                    decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
-                    child: const Icon(AppIcons.check, size: 11, color: AppColors.textOnGold),
+                    decoration: const BoxDecoration(
+                      color: AppColors.gold,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      AppIcons.check,
+                      size: 11,
+                      color: AppColors.textOnGold,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: AppTheme.spaceM),
-            Text(label, style: AppTypography.titleS(color: selected ? AppColors.textPrimary : AppColors.textSecondary)),
+            Text(
+              label,
+              style: AppTypography.titleS(
+                color: selected
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+              ),
+            ),
             const SizedBox(height: 2),
             Text(
               descriptor,

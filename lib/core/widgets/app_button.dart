@@ -36,8 +36,12 @@ class AppButton extends StatelessWidget {
     final isPrimary = variant == AppButtonVariant.primary;
     final disabled = onTap == null;
 
-    final fill = isPrimary ? (disabled ? AppColors.goldMuted : AppColors.gold) : AppColors.bgSurfaceRaised;
-    final labelColor = isPrimary ? AppColors.textOnGold : (disabled ? AppColors.textMuted : AppColors.textPrimary);
+    final fill = isPrimary
+        ? (disabled ? AppColors.goldMuted : AppColors.gold)
+        : AppColors.bgSurfaceRaised;
+    final labelColor = isPrimary
+        ? AppColors.textOnGold
+        : (disabled ? AppColors.textMuted : AppColors.textPrimary);
 
     return PressableScale(
       onTap: loading ? null : onTap,
@@ -62,7 +66,10 @@ class AppButton extends StatelessWidget {
               SizedBox(
                 width: AppTheme.iconM,
                 height: AppTheme.iconM,
-                child: CircularProgressIndicator(strokeWidth: 2, color: labelColor),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: labelColor,
+                ),
               ),
               const SizedBox(width: AppTheme.spaceS),
             ] else if (icon != null) ...[

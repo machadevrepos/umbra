@@ -8,7 +8,10 @@ import '../../../core/widgets/app_button.dart';
 /// session is reversible and low-stakes: it saves what was tracked and
 /// stops reminders, it doesn't delete anything. See CLAUDE.md "Destructive
 /// actions confirm proportionally to their severity."
-Future<bool> showEndSessionSheet(BuildContext context, {required String elapsedLabel}) async {
+Future<bool> showEndSessionSheet(
+  BuildContext context, {
+  required String elapsedLabel,
+}) async {
   final result = await showModalBottomSheet<bool>(
     context: context,
     backgroundColor: Colors.transparent,
@@ -28,7 +31,9 @@ class _EndSessionSheet extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.bgSurfaceRaised,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusL)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusL),
+        ),
       ),
       padding: EdgeInsets.only(
         left: AppTheme.screenPaddingH,
@@ -44,7 +49,10 @@ class _EndSessionSheet extends StatelessWidget {
             child: Container(
               width: 36,
               height: 4,
-              decoration: BoxDecoration(color: AppColors.bgHairline, borderRadius: BorderRadius.circular(AppTheme.radiusS)),
+              decoration: BoxDecoration(
+                color: AppColors.bgHairline,
+                borderRadius: BorderRadius.circular(AppTheme.radiusS),
+              ),
             ),
           ),
           const SizedBox(height: AppTheme.spaceL),
@@ -55,7 +63,10 @@ class _EndSessionSheet extends StatelessWidget {
             style: AppTypography.bodyM(),
           ),
           const SizedBox(height: AppTheme.spaceXl),
-          AppButton(label: 'End session', onTap: () => Navigator.of(context).pop(true)),
+          AppButton(
+            label: 'End session',
+            onTap: () => Navigator.of(context).pop(true),
+          ),
           const SizedBox(height: AppTheme.spaceM),
           AppButton(
             label: 'Keep going',

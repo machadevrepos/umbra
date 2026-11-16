@@ -19,7 +19,11 @@ const List<_NavItem> _kNavItems = [
 ];
 
 class UmbraBottomNav extends StatelessWidget {
-  const UmbraBottomNav({super.key, required this.activeIndex, required this.onTap});
+  const UmbraBottomNav({
+    super.key,
+    required this.activeIndex,
+    required this.onTap,
+  });
 
   final int activeIndex;
   final ValueChanged<int> onTap;
@@ -29,7 +33,10 @@ class UmbraBottomNav extends StatelessWidget {
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
     return Container(
-      padding: EdgeInsets.only(top: AppTheme.spaceS, bottom: bottomInset + AppTheme.spaceXs),
+      padding: EdgeInsets.only(
+        top: AppTheme.spaceS,
+        bottom: bottomInset + AppTheme.spaceXs,
+      ),
       decoration: const BoxDecoration(
         color: AppColors.bgSurfaceRaised,
         border: Border(top: BorderSide(color: AppColors.bgHairline)),
@@ -45,7 +52,10 @@ class UmbraBottomNav extends StatelessWidget {
             onTap: () => onTap(i),
             semanticLabel: item.label,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: AppTheme.minTapTarget, minHeight: AppTheme.minTapTarget),
+              constraints: const BoxConstraints(
+                minWidth: AppTheme.minTapTarget,
+                minHeight: AppTheme.minTapTarget,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,

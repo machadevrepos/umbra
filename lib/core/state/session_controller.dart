@@ -1,124 +1,209 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/hydration_mode.dart';
 import '../models/session_record.dart';
+import 'band_controller.dart';
+import 'session_store.dart';
 
-// Representative values for the live-reading demo. Real values stream in
-// over BLE from the band's PPG sensor once that layer exists.
-const List<int> kMockHrSequence = [78, 82, 91, 87, 95, 84, 90, 101];
-
-// HRV (ms), indexed alongside kMockHrSequence: it trends down as HR rises,
-// same demo cadence, same eventual swap for a real BLE reading.
-const List<int> kMockHrvSequence = [62, 58, 50, 54, 46, 57, 51, 44];
-
-/// Owns the live Night session: start time, elapsed ticking, mock HR
-/// readings, and the reminder countdown, independent of any screen's
-/// lifecycle. Navigating away from Active Session used to cancel its
-/// `Timer` on `dispose()`, silently killing the session despite the back
-/// button's own label claiming it "keeps running." Now the session lives
-/// here, one level up, the same way a real session tracker keeps counting
-/// while you background the app.
 class SessionController extends ChangeNotifier {
-  DateTime? _startedAt;
+  SessionController({
+    required BandController band,
+    required SessionStore history,
+  }) : _band = band,
+       _history = history {
+    _band.addListener(_onBandChanged);
+    ready = _restore();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (isActive) notifyListeners();
+    });
+  }
+  final BandController _band;
+  final SessionStore _history;
+  late final Future<void> ready;
   Timer? _ticker;
-
-  int elapsedSeconds = 0;
-  int remindersFired = 0;
-  int intervalMinutes = 40;
-
-  int _hrIndex = 0;
-  int _hrTickCounter = 0;
-  int _hrSum = kMockHrSequence.first;
-  int _hrSamples = 1;
-  int _hrvSum = kMockHrvSequence.first;
-  int _hrvSamples = 1;
-
-  // Demo-seeded countdown so the full "ring fills, reminder fires, resets"
-  // loop is observable within a short test session instead of the real
-  // configured interval (20-90 minutes depending on mode). Swap for the
-  // band's actual next-reminder timestamp once BLE telemetry exists.
-  static const int demoReminderSeconds = 90;
-  int secondsUntilReminder = demoReminderSeconds;
-
+  DateTime? _startedAt;
+  String? _sessionDevice;
+  bool _disposed = false;
+  bool _interrupted = false;
+  int _lastHrSequence = -1,
+      _hrSum = 0,
+      _hrCount = 0,
+      _oxygenSum = 0,
+      _oxygenCount = 0;
+  DateTime? _lastOxygenAt;
+  int? _stepBaseline;
+  int? _lastStepCount;
+  bool _stepCounterReset = false;
+  int? get steps =>
+      _stepBaseline == null ||
+          _band.steps == null ||
+          _band.steps! < _stepBaseline! ||
+          _interrupted ||
+          _stepCounterReset
+      ? null
+      : _band.steps! - _stepBaseline!;
+  Future<void> _writes = Future.value();
+  Future<void> _finished = Future.value();
   bool get isActive => _startedAt != null;
+  bool get hardwareConfirmed =>
+      _band.connected &&
+      _band.configurationReady &&
+      _band.mode == HydrationMode.night;
   DateTime? get startedAt => _startedAt;
-  int get hr => kMockHrSequence[_hrIndex];
-  int get avgHr => (_hrSum / _hrSamples).round();
-  int get hrv => kMockHrvSequence[_hrIndex];
-  int get avgHrv => (_hrvSum / _hrvSamples).round();
+  int get elapsedSeconds => _startedAt == null
+      ? 0
+      : DateTime.now().difference(_startedAt!).inSeconds.clamp(0, 1 << 31);
+  int? get intervalMinutes => _band.nightIntervalMinutes;
+  int? get hr => hardwareConfirmed ? _band.heartRate : null;
+  int? get avgHr => _hrCount == 0 ? null : (_hrSum / _hrCount).round();
+  int? get avgSpo2 =>
+      _oxygenCount == 0 ? null : (_oxygenSum / _oxygenCount).round();
+  int? get spo2 =>
+      hardwareConfirmed &&
+          (_band.spo2Reading?.isRecent(DateTime.now()) ?? false)
+      ? _band.spo2Reading?.percent
+      : null;
 
-  // SpO2 and motion context don't need per-tick simulation fidelity the way
-  // HR/HRV do (they're the two values a wrist PPG naturally streams
-  // continuously); a steady reading is representative until real BLE
-  // telemetry lands.
-  int get spo2 => 97;
-  String get motion => 'Active';
+  Future<void> _restore() async {
+    try {
+      final value = (await SharedPreferences.getInstance()).getString(
+        'active_hardware_session_v1',
+      );
+      if (value != null && !isActive && !_disposed) {
+        final data = jsonDecode(value) as Map<String, dynamic>;
+        _sessionDevice = data['device'] as String;
+        _startedAt = DateTime.parse(data['start'] as String).toLocal();
+        _hrSum = data['hrSum'] as int;
+        _hrCount = data['hrCount'] as int;
+        _oxygenSum = data['oxygenSum'] as int;
+        _oxygenCount = data['oxygenCount'] as int;
+        _stepBaseline = data['stepBaseline'] as int?;
+        _interrupted = true;
+        _onBandChanged();
+      }
+    } catch (_) {}
+  }
 
-  void startSession({required int intervalMinutes}) {
-    if (isActive) return; // already running: resuming, not restarting
+  Future<void> _persist() {
+    final data = isActive
+        ? jsonEncode({
+            'device': _sessionDevice,
+            'start': _startedAt!.toUtc().toIso8601String(),
+            'hrSum': _hrSum,
+            'hrCount': _hrCount,
+            'oxygenSum': _oxygenSum,
+            'oxygenCount': _oxygenCount,
+            'stepBaseline': _stepBaseline,
+          })
+        : null;
+    _writes = _writes.then((_) async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (data == null) {
+          await prefs.remove('active_hardware_session_v1');
+        } else {
+          await prefs.setString('active_hardware_session_v1', data);
+        }
+      } catch (_) {}
+    });
+    return _writes;
+  }
+
+  Future<void> startSession() => _band.setMode(HydrationMode.night);
+  Future<void> endSession() async {
+    await _band.setMode(HydrationMode.daily);
+    await _finished;
+  }
+
+  void _begin() {
     _startedAt = DateTime.now();
-    this.intervalMinutes = intervalMinutes;
-    elapsedSeconds = 0;
-    remindersFired = 0;
-    _hrIndex = 0;
-    _hrTickCounter = 0;
-    _hrSum = kMockHrSequence.first;
-    _hrSamples = 1;
-    _hrvSum = kMockHrvSequence.first;
-    _hrvSamples = 1;
-    secondsUntilReminder = demoReminderSeconds;
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
+    _sessionDevice = _band.deviceId;
+    _interrupted = false;
+    _hrSum = 0;
+    _hrCount = 0;
+    _oxygenSum = 0;
+    _oxygenCount = 0;
+    _lastHrSequence = _band.heartRateSequence;
+    _lastOxygenAt = null;
+    _stepBaseline = _band.stepsAt == null ? null : _band.steps;
+    _lastStepCount = _stepBaseline;
+    _stepCounterReset = false;
+    unawaited(_persist());
+  }
+
+  void _onBandChanged() {
+    if (_disposed) return;
+    if (!_band.connected) {
+      if (isActive) _interrupted = true;
+      notifyListeners();
+      return;
+    }
+    if (!_band.configurationReady || _band.mode == null) return;
+    if (isActive && _band.steps != null) {
+      if (_lastStepCount != null && _band.steps! < _lastStepCount!) {
+        _stepCounterReset = true;
+      }
+      _lastStepCount = _band.steps;
+    }
+    if (_band.mode == HydrationMode.night) {
+      if (!isActive || _sessionDevice != _band.deviceId) _begin();
+      if (_lastHrSequence != _band.heartRateSequence) {
+        _lastHrSequence = _band.heartRateSequence;
+        final value = _band.heartRate;
+        if (value != null) {
+          _hrSum += value;
+          _hrCount++;
+          unawaited(_persist());
+        }
+      }
+      final oxygen = _band.spo2Reading;
+      if (oxygen?.status == 1 &&
+          oxygen?.measuredAt != null &&
+          oxygen!.measuredAt != _lastOxygenAt &&
+          !oxygen.measuredAt!.isBefore(_startedAt!) &&
+          oxygen.isRecent(DateTime.now())) {
+        _lastOxygenAt = oxygen.measuredAt;
+        _oxygenSum += oxygen.percent!;
+        _oxygenCount++;
+        unawaited(_persist());
+      }
+    } else if (isActive) {
+      if (!_interrupted && _sessionDevice == _band.deviceId) {
+        final record = SessionRecord(
+          id: 'live:${_sessionDevice!}:${_startedAt!.microsecondsSinceEpoch}',
+          deviceId: _sessionDevice,
+          mode: HydrationMode.night,
+          startedAt: _startedAt!,
+          endedAt: DateTime.now(),
+          avgHr: avgHr,
+          avgHrv: null,
+          avgSpo2: avgSpo2,
+          motion: 'Not provided by band',
+          reminderCount: null,
+          steps: steps,
+        );
+        _finished = _history.addSession(record);
+      }
+      // After a disconnect only the firmware log can tell us when a night ended.
+      _startedAt = null;
+      _sessionDevice = null;
+      unawaited(_persist());
+    }
     notifyListeners();
   }
 
-  void _onTick() {
-    elapsedSeconds++;
-    _hrTickCounter++;
-    if (_hrTickCounter >= 4) {
-      _hrTickCounter = 0;
-      _hrIndex = (_hrIndex + 1) % kMockHrSequence.length;
-      _hrSum += hr;
-      _hrSamples++;
-      _hrvSum += hrv;
-      _hrvSamples++;
-    }
-    secondsUntilReminder--;
-    if (secondsUntilReminder <= 0) {
-      remindersFired++;
-      HapticFeedback.mediumImpact();
-      secondsUntilReminder = demoReminderSeconds;
-    }
-    notifyListeners();
-  }
-
-  /// Stops the ticker and returns the finished record for the caller to
-  /// hand to `SessionStore`. This controller doesn't know about the store
-  /// itself, callers compose the two rather than one controller reaching
-  /// into another.
-  SessionRecord endSession() {
-    assert(isActive, 'endSession called with no active session');
-    final record = SessionRecord(
-      id: _startedAt!.microsecondsSinceEpoch.toString(),
-      mode: HydrationMode.night,
-      startedAt: _startedAt!,
-      endedAt: DateTime.now(),
-      avgHr: avgHr,
-      avgHrv: avgHrv,
-      avgSpo2: spo2,
-      motion: motion,
-      reminderCount: remindersFired,
-    );
-    _ticker?.cancel();
-    _ticker = null;
-    _startedAt = null;
-    notifyListeners();
-    return record;
+  Future<void> flush() async {
+    await _writes;
+    await _finished;
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _ticker?.cancel();
+    _band.removeListener(_onBandChanged);
     super.dispose();
   }
 }

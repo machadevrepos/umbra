@@ -8,7 +8,12 @@ import 'pressable_scale.dart';
 /// (tint + border when on) rather than Material's default `Switch`, so a
 /// toggle feels like it belongs to the same system as everything else.
 class AppSwitch extends StatelessWidget {
-  const AppSwitch({super.key, required this.value, required this.onChanged, this.semanticLabel});
+  const AppSwitch({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.semanticLabel,
+  });
 
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -37,7 +42,10 @@ class AppSwitch extends StatelessWidget {
         decoration: BoxDecoration(
           color: value ? AppColors.goldTint : AppColors.bgHairline,
           borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-          border: Border.all(color: value ? AppColors.goldBorder : Colors.transparent, width: 1.5),
+          border: Border.all(
+            color: value ? AppColors.goldBorder : Colors.transparent,
+            width: 1.5,
+          ),
         ),
         child: AnimatedAlign(
           duration: duration,

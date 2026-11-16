@@ -12,7 +12,11 @@ import '../state/band_controller.dart';
 /// `AppColors.warning`, the accent at full strength repurposed for
 /// "needs a look," not a fourth ad hoc color for "in between."
 class BandStatusPresentation {
-  const BandStatusPresentation({required this.label, required this.icon, required this.color});
+  const BandStatusPresentation({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
 
   final String label;
   final IconData icon;
@@ -21,19 +25,47 @@ class BandStatusPresentation {
   factory BandStatusPresentation.of(BandLinkState state) {
     switch (state) {
       case BandLinkState.connected:
-        return const BandStatusPresentation(label: 'Connected', icon: AppIcons.bluetooth, color: AppColors.success);
+        return const BandStatusPresentation(
+          label: 'Connected',
+          icon: AppIcons.bluetooth,
+          color: AppColors.success,
+        );
       case BandLinkState.reconnecting:
-        return const BandStatusPresentation(label: 'Reconnecting…', icon: AppIcons.bluetooth, color: AppColors.warning);
+        return const BandStatusPresentation(
+          label: 'Reconnecting…',
+          icon: AppIcons.bluetooth,
+          color: AppColors.warning,
+        );
       case BandLinkState.scanning:
-        return const BandStatusPresentation(label: 'Scanning…', icon: AppIcons.bluetooth, color: AppColors.warning);
+        return const BandStatusPresentation(
+          label: 'Scanning…',
+          icon: AppIcons.bluetooth,
+          color: AppColors.warning,
+        );
       case BandLinkState.connecting:
-        return const BandStatusPresentation(label: 'Connecting…', icon: AppIcons.bluetooth, color: AppColors.warning);
+        return const BandStatusPresentation(
+          label: 'Connecting…',
+          icon: AppIcons.bluetooth,
+          color: AppColors.warning,
+        );
       case BandLinkState.bluetoothUnavailable:
-        return const BandStatusPresentation(label: 'Bluetooth off', icon: AppIcons.bluetoothOff, color: AppColors.textMuted);
+        return const BandStatusPresentation(
+          label: 'Bluetooth off',
+          icon: AppIcons.bluetoothOff,
+          color: AppColors.textMuted,
+        );
       case BandLinkState.permissionDenied:
-        return const BandStatusPresentation(label: 'Permission needed', icon: AppIcons.bluetoothOff, color: AppColors.textMuted);
+        return const BandStatusPresentation(
+          label: 'Permission needed',
+          icon: AppIcons.bluetoothOff,
+          color: AppColors.textMuted,
+        );
       case BandLinkState.idle:
-        return const BandStatusPresentation(label: 'Offline', icon: AppIcons.bluetoothOff, color: AppColors.textMuted);
+        return const BandStatusPresentation(
+          label: 'Offline',
+          icon: AppIcons.bluetoothOff,
+          color: AppColors.textMuted,
+        );
     }
   }
 }

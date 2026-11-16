@@ -42,7 +42,8 @@ class _PressableScaleState extends State<PressableScale> {
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final duration = reduceMotion ? Duration.zero : AppTheme.animXs;
 
     return Semantics(
@@ -52,7 +53,8 @@ class _PressableScaleState extends State<PressableScale> {
         onTap: widget.onTap == null
             ? null
             : () {
-                if (widget.hapticOnTap && context.read<SettingsController>().hapticsEnabled) {
+                if (widget.hapticOnTap &&
+                    context.read<SettingsController>().hapticsEnabled) {
                   HapticFeedback.selectionClick();
                 }
                 widget.onTap!();

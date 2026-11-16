@@ -9,7 +9,20 @@ String relativeDayLabel(DateTime dt) {
   final diff = today.difference(that).inDays;
   if (diff == 0) return 'Today';
   if (diff == 1) return 'Yesterday';
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   return '${months[dt.month - 1]} ${dt.day}';
 }
 

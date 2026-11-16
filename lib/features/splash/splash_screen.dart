@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../core/state/session_controller.dart';
+import '../../core/state/session_store.dart';
+import '../../core/state/settings_controller.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_theme.dart';
 import '../../core/constants/app_typography.dart';
@@ -20,7 +24,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _markOpacity;
   late final Animation<double> _markScale;
@@ -33,7 +38,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   void initState() {
     super.initState();
 
-    final reduceMotion = WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+    final reduceMotion = WidgetsBinding
+        .instance
+        .platformDispatcher
+        .accessibilityFeatures
+        .disableAnimations;
 
     _controller = AnimationController(
       vsync: this,
@@ -45,7 +54,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       curve: const Interval(0.0, 0.65, curve: Curves.easeOut),
     );
     _markScale = Tween<double>(begin: 0.92, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.65, curve: Curves.easeOutCubic)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.65, curve: Curves.easeOutCubic),
+      ),
     );
     _ruleWidth = CurvedAnimation(
       parent: _controller,
@@ -58,20 +70,31 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Future<void> _scheduleNavigation(bool reduceMotion) async {
     // Kicked off alongside the entrance animation, not after it, so the
     // preferences read doesn't add its own delay on top of the brand hold.
-    final hasCompletedOnboardingFuture = OnboardingStorage.hasCompletedOnboarding();
+    final hasCompletedOnboardingFuture =
+        OnboardingStorage.hasCompletedOnboarding();
+    final dataReady = Future.wait([
+      context.read<SessionStore>().ready,
+      context.read<SettingsController>().ready,
+      context.read<SessionController>().ready,
+    ]);
     try {
       await _controller.forward();
     } on TickerCanceled {
       return;
     }
     if (!mounted) return;
-    await Future.delayed(reduceMotion ? const Duration(milliseconds: 300) : _holdDuration);
+    await Future.delayed(
+      reduceMotion ? const Duration(milliseconds: 300) : _holdDuration,
+    );
     if (!mounted) return;
     final hasCompletedOnboarding = await hasCompletedOnboardingFuture;
+    await dataReady;
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => hasCompletedOnboarding ? const MainShell() : const OnboardingCarouselScreen(),
+        builder: (_) => hasCompletedOnboarding
+            ? const MainShell()
+            : const OnboardingCarouselScreen(),
       ),
     );
   }
@@ -92,10 +115,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           builder: (context, child) {
             return Opacity(
               opacity: _markOpacity.value,
-              child: Transform.scale(
-                scale: _markScale.value,
-                child: child,
-              ),
+              child: Transform.scale(scale: _markScale.value, child: child),
             );
           },
           child: Column(

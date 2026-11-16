@@ -12,7 +12,7 @@ import '../../core/widgets/pressable_scale.dart';
 /// The single morning prompt the whole app sends: one notification, one
 /// question, no follow-ups. See side_notes.md, "Just one notification.
 /// Don't add more prompts than this." Reachable either by tapping that 9am
-/// notification (TODO: wire once flutter_local_notifications lands) or,
+/// notification or,
 /// as a fallback for a missed/dismissed notification, from Home's last-
 /// session card.
 class MorningCheckinScreen extends StatefulWidget {
@@ -44,8 +44,12 @@ class _MorningCheckinScreenState extends State<MorningCheckinScreen> {
       backgroundColor: AppColors.bgVoid,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppTheme.screenPaddingH),
-          child: _submitted ? const _SubmittedConfirmation() : _buildForm(context),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppTheme.screenPaddingH,
+          ),
+          child: _submitted
+              ? const _SubmittedConfirmation()
+              : _buildForm(context),
         ),
       ),
     );
@@ -63,9 +67,14 @@ class _MorningCheckinScreenState extends State<MorningCheckinScreen> {
               semanticLabel: 'Not now',
               child: Container(
                 height: AppTheme.minTapTarget,
-                padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceM),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spaceM,
+                ),
                 alignment: Alignment.center,
-                child: Text('Not now', style: AppTypography.labelL(color: AppColors.textMuted)),
+                child: Text(
+                  'Not now',
+                  style: AppTypography.labelL(color: AppColors.textMuted),
+                ),
               ),
             ),
           ],
@@ -77,7 +86,10 @@ class _MorningCheckinScreenState extends State<MorningCheckinScreen> {
         const SizedBox(height: AppTheme.spaceS),
         Text(widget.sessionSummary, style: AppTypography.bodyM()),
         const SizedBox(height: AppTheme.spaceXxxl),
-        _RatingGrid(value: _rating, onChanged: (v) => setState(() => _rating = v)),
+        _RatingGrid(
+          value: _rating,
+          onChanged: (v) => setState(() => _rating = v),
+        ),
         const Spacer(),
         AppButton(label: 'Save', onTap: _rating == null ? null : _submit),
         const SizedBox(height: AppTheme.spaceL),
@@ -96,7 +108,13 @@ class _RatingGrid extends StatelessWidget {
       children: [
         for (final n in numbers) ...[
           if (n != numbers.first) const SizedBox(width: AppTheme.spaceS),
-          Expanded(child: _RatingCircle(number: n, selected: value == n, onTap: () => onChanged(n))),
+          Expanded(
+            child: _RatingCircle(
+              number: n,
+              selected: value == n,
+              onTap: () => onChanged(n),
+            ),
+          ),
         ],
       ],
     );
@@ -123,7 +141,11 @@ class _RatingGrid extends StatelessWidget {
 }
 
 class _RatingCircle extends StatelessWidget {
-  const _RatingCircle({required this.number, required this.selected, required this.onTap});
+  const _RatingCircle({
+    required this.number,
+    required this.selected,
+    required this.onTap,
+  });
   final int number;
   final bool selected;
   final VoidCallback onTap;
@@ -144,11 +166,16 @@ class _RatingCircle extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AppColors.goldTint : AppColors.bgSurface,
           shape: BoxShape.circle,
-          border: Border.all(color: selected ? AppColors.goldBorder : AppColors.bgHairline, width: selected ? 1.5 : 1),
+          border: Border.all(
+            color: selected ? AppColors.goldBorder : AppColors.bgHairline,
+            width: selected ? 1.5 : 1,
+          ),
         ),
         child: Text(
           '$number',
-          style: AppTypography.labelL(color: selected ? AppColors.textPrimary : AppColors.textSecondary),
+          style: AppTypography.labelL(
+            color: selected ? AppColors.textPrimary : AppColors.textSecondary,
+          ),
         ),
       ),
     );
@@ -167,7 +194,8 @@ class _SubmittedConfirmation extends StatelessWidget {
         tween: Tween(begin: 0.85, end: 1.0),
         duration: reduceMotion ? Duration.zero : AppTheme.animNormal,
         curve: AppTheme.motionCurve,
-        builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
+        builder: (context, scale, child) =>
+            Transform.scale(scale: scale, child: child),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -175,8 +203,16 @@ class _SubmittedConfirmation extends StatelessWidget {
               width: 72,
               height: 72,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: AppColors.goldTint, shape: BoxShape.circle, border: Border.all(color: AppColors.gold, width: 1.5)),
-              child: const Icon(AppIcons.check, size: AppTheme.iconXl, color: AppColors.gold),
+              decoration: BoxDecoration(
+                color: AppColors.goldTint,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.gold, width: 1.5),
+              ),
+              child: const Icon(
+                AppIcons.check,
+                size: AppTheme.iconXl,
+                color: AppColors.gold,
+              ),
             ),
             const SizedBox(height: AppTheme.spaceL),
             Text('Noted.', style: AppTypography.titleM()),

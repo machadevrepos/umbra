@@ -29,12 +29,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  HydrationMode _mode = HydrationMode.night;
-  final Map<HydrationMode, int> _intervalByMode = {
-    HydrationMode.daily: 90,
-    HydrationMode.night: 40,
-  };
-
   bool _contentVisible = false;
 
   @override
@@ -53,13 +47,49 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Good evening';
   }
 
+  Future<void> _changeMode(HydrationMode mode) async {
+    final band = context.read<BandController>();
+    if (!band.canControl) return;
+    try {
+      await band.setMode(mode);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              band.deviceError ?? 'Reconnect your band and try again.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _openIntervalSheet() async {
+    final band = context.read<BandController>();
+    if (!band.canControl ||
+        band.mode == null ||
+        band.activeIntervalMinutes == null) {
+      return;
+    }
+    final mode = band.mode!;
     final result = await showIntervalSheet(
       context,
-      current: _intervalByMode[_mode]!,
+      current: band.activeIntervalMinutes!,
     );
-    if (result != null) {
-      setState(() => _intervalByMode[_mode] = result);
+    if (result == null || !mounted) return;
+    try {
+      await band.setInterval(mode, result);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              band.deviceError ?? 'The band did not confirm the interval.',
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -68,11 +98,11 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       (_) => MorningCheckinScreen(
         sessionSummary:
-            'Last night: Night session, ${session.durationLabel}, ${session.reminderCount} reminders',
+            'Last night: Night session, ${session.durationLabel}, recorded by your band',
       ),
     );
     if (rating != null && mounted) {
-      context.read<SessionStore>().attachCheckIn(session.id, rating);
+      await context.read<SessionStore>().attachCheckIn(session.id, rating);
     }
   }
 
@@ -101,7 +131,11 @@ class _HomeScreenState extends State<HomeScreen> {
               AppTheme.spaceXxxl,
             ),
             children: [
-              _TopBar(state: band.state, battery: band.battery, hasReading: band.lastSeenAt != null),
+              _TopBar(
+                state: band.state,
+                battery: band.battery,
+                hasReading: band.lastSeenAt != null,
+              ),
               const SizedBox(height: AppTheme.spaceXxl),
               Text(_greeting, style: AppTypography.titleL()),
               const SizedBox(height: 4),
@@ -114,8 +148,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: AppIcons.sun,
                       label: 'Daily',
                       descriptor: 'Passive all-day reminders',
-                      selected: _mode == HydrationMode.daily,
-                      onTap: () => setState(() => _mode = HydrationMode.daily),
+                      selected:
+                          band.connected && band.mode == HydrationMode.daily,
+                      onTap: band.canControl
+                          ? () => _changeMode(HydrationMode.daily)
+                          : null,
                     ),
                   ),
                   const SizedBox(width: AppTheme.spaceM),
@@ -124,21 +161,26 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: AppIcons.moon,
                       label: 'Night',
                       descriptor: "Active while you're out",
-                      selected: _mode == HydrationMode.night,
-                      onTap: () => setState(() => _mode = HydrationMode.night),
+                      selected:
+                          band.connected && band.mode == HydrationMode.night,
+                      onTap: band.canControl
+                          ? () => _changeMode(HydrationMode.night)
+                          : null,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: AppTheme.spaceM),
               _IntervalRow(
-                minutes: _intervalByMode[_mode]!,
-                onTap: _openIntervalSheet,
+                minutes: band.connected && band.configurationReady
+                    ? band.activeIntervalMinutes
+                    : null,
+                onTap: band.canControl ? _openIntervalSheet : null,
               ),
               const SizedBox(height: AppTheme.spaceXl),
               _PrimaryAction(
-                mode: _mode,
-                intervalMinutes: _intervalByMode[_mode]!,
+                mode: band.mode,
+                intervalMinutes: band.activeIntervalMinutes,
               ),
               const SizedBox(height: AppTheme.spaceXxxl),
               _SectionLabel('Your band'),
@@ -147,6 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 state: band.state,
                 battery: band.battery,
                 restingHr: band.restingHr,
+                steps: band.steps,
                 lastSeenAt: band.lastSeenAt,
                 stale: band.readingsAreStale,
                 onTap: () => pushOnce(context, (_) => const BandDetailScreen()),
@@ -170,7 +213,11 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.state, required this.battery, required this.hasReading});
+  const _TopBar({
+    required this.state,
+    required this.battery,
+    required this.hasReading,
+  });
 
   final BandLinkState state;
   final int battery;
@@ -201,14 +248,16 @@ class _TopBar extends StatelessWidget {
                 ],
               ),
             ),
-            if (hasReading) ...[
+            if (hasReading && battery >= 0) ...[
               const SizedBox(width: AppTheme.spaceL),
               Semantics(
                 label: 'Battery $battery percent',
                 child: Row(
                   children: [
                     Icon(
-                      battery <= 25 ? AppIcons.batteryLow : AppIcons.batteryFull,
+                      battery <= 25
+                          ? AppIcons.batteryLow
+                          : AppIcons.batteryFull,
                       size: AppTheme.iconS,
                       color: battery <= 25
                           ? AppColors.error
@@ -230,15 +279,16 @@ class _TopBar extends StatelessWidget {
 class _IntervalRow extends StatelessWidget {
   const _IntervalRow({required this.minutes, required this.onTap});
 
-  final int minutes;
-  final VoidCallback onTap;
+  final int? minutes;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return PressableScale(
       onTap: onTap,
-      semanticLabel:
-          'Reminder interval, every $minutes minutes. Double tap to change.',
+      semanticLabel: minutes == null
+          ? 'Connect your band to read its interval'
+          : 'Band reminder interval, every $minutes minutes',
       child: Container(
         height: AppTheme.minTapTarget,
         padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceL),
@@ -257,7 +307,9 @@ class _IntervalRow extends StatelessWidget {
             const SizedBox(width: AppTheme.spaceM),
             Expanded(
               child: Text(
-                'Reminds every $minutes min',
+                minutes == null
+                    ? 'Connect to read the interval'
+                    : 'Reminds every $minutes min',
                 style: AppTypography.bodyL(),
               ),
             ),
@@ -276,20 +328,30 @@ class _IntervalRow extends StatelessWidget {
 class _PrimaryAction extends StatelessWidget {
   const _PrimaryAction({required this.mode, required this.intervalMinutes});
 
-  final HydrationMode mode;
-  final int intervalMinutes;
+  final HydrationMode? mode;
+  final int? intervalMinutes;
 
-  void _openSession(BuildContext context) => pushOnce(
-    context,
-    (_) => ActiveSessionScreen(intervalMinutes: intervalMinutes),
-  );
+  void _openSession(BuildContext context) =>
+      pushOnce(context, (_) => const ActiveSessionScreen());
 
   @override
   Widget build(BuildContext context) {
     // A live session takes priority over whichever mode happens to be
     // selected right now: there's only ever one session, and returning to
     // it has to stay reachable regardless of what the toggle shows.
+    final band = context.watch<BandController>();
     final sessionActive = context.watch<SessionController>().isActive;
+    if (!band.connected || !band.configurationReady) {
+      return AppButton(
+        label: band.connected && band.deviceError == null
+            ? 'Syncing your band'
+            : 'Connect your band',
+        icon: AppIcons.bluetooth,
+        onTap: band.connected && band.deviceError == null
+            ? null
+            : () => pushOnce(context, (_) => const BandDetailScreen()),
+      );
+    }
     if (sessionActive) {
       return PressableScale(
         onTap: () => _openSession(context),
@@ -329,7 +391,7 @@ class _PrimaryAction extends StatelessWidget {
 
     if (mode == HydrationMode.night) {
       return AppButton(
-        label: 'Start session',
+        label: 'View session',
         icon: AppIcons.play,
         onTap: () => _openSession(context),
       );
@@ -357,7 +419,10 @@ class _PrimaryAction extends StatelessWidget {
           ),
           const SizedBox(width: AppTheme.spaceM),
           Expanded(
-            child: Text('Daily Mode is active', style: AppTypography.labelL()),
+            child: Text(
+              'Daily Mode on your band',
+              style: AppTypography.labelL(),
+            ),
           ),
         ],
       ),
@@ -380,6 +445,7 @@ class _BandStatusCard extends StatelessWidget {
     required this.state,
     required this.battery,
     required this.restingHr,
+    required this.steps,
     required this.lastSeenAt,
     required this.stale,
     required this.onTap,
@@ -388,9 +454,10 @@ class _BandStatusCard extends StatelessWidget {
   final BandLinkState state;
   final int battery;
   final int restingHr;
+  final int? steps;
   final DateTime? lastSeenAt;
   final bool stale;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -427,14 +494,16 @@ class _BandStatusCard extends StatelessWidget {
                 ),
                 const SizedBox(width: AppTheme.spaceL),
                 LabeledStat(
-                  label: 'Resting HR',
-                  value: hasReading ? '$restingHr bpm' : 'No data',
+                  label: 'Heart rate',
+                  value: hasReading && restingHr > 0
+                      ? '$restingHr bpm'
+                      : 'No data',
                   valueStyle: AppTypography.titleM(color: valueColor),
                 ),
                 const Spacer(),
                 LabeledStat(
                   label: 'Battery',
-                  value: hasReading ? '$battery%' : 'No data',
+                  value: hasReading && battery >= 0 ? '$battery%' : 'No data',
                   alignEnd: true,
                   valueStyle: AppTypography.titleM(color: valueColor),
                 ),
@@ -446,6 +515,23 @@ class _BandStatusCard extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: AppTheme.spaceL),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    state == BandLinkState.connected
+                        ? 'Steps since power-on'
+                        : 'Last saved step count',
+                    style: AppTypography.bodyS(),
+                  ),
+                ),
+                Text(
+                  steps == null ? 'No data' : '$steps',
+                  style: AppTypography.titleS(color: valueColor),
+                ),
+              ],
+            ),
             if (stale && lastSeenAt != null) ...[
               const SizedBox(height: AppTheme.spaceM),
               const Divider(height: 1, color: AppColors.bgHairline),
@@ -453,7 +539,9 @@ class _BandStatusCard extends StatelessWidget {
               Row(
                 children: [
                   Icon(
-                    state == BandLinkState.reconnecting ? AppIcons.bluetooth : AppIcons.bluetoothOff,
+                    state == BandLinkState.reconnecting
+                        ? AppIcons.bluetooth
+                        : AppIcons.bluetoothOff,
                     size: AppTheme.iconS,
                     color: AppColors.textMuted,
                   ),
@@ -518,10 +606,7 @@ class _LastSessionCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: LabeledStat(
-                  label: 'Avg HR',
-                  value: '${session.avgHr} bpm',
-                ),
+                child: LabeledStat(label: 'Avg HR', value: session.avgHrLabel),
               ),
               Expanded(
                 child: LabeledStat(
@@ -530,10 +615,7 @@ class _LastSessionCard extends StatelessWidget {
                 ),
               ),
               Expanded(
-                child: LabeledStat(
-                  label: 'Reminders',
-                  value: '${session.reminderCount}',
-                ),
+                child: LabeledStat(label: 'SpO2', value: session.avgSpo2Label),
               ),
             ],
           ),
