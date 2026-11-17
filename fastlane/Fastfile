@@ -105,6 +105,12 @@ platform :ios do
       clean: true,
     )
 
+    # Validate the built app metadata before uploading (ITMS-90068).
+    app_plist = File.join(lane_context[SharedValues::XCODEBUILD_ARCHIVE], "Products/Applications/Runner.app/Info.plist")
+    minimum_ios = get_info_plist_value(path: app_plist, key: "MinimumOSVersion")
+    UI.user_error!("Built app must target iOS 15.0 or later; found #{minimum_ios.inspect}") if minimum_ios.to_s.empty? || Gem::Version.new(minimum_ios.to_s) < Gem::Version.new("15.0")
+    UI.message("Verified built app MinimumOSVersion: #{minimum_ios}")
+
     upload_to_testflight(
       api_key: api_key,
       ipa: lane_context[SharedValues::IPA_OUTPUT_PATH],
